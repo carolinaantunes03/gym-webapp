@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>Ginásio</title>
+</head>
+<body>
+  <header>
+    <h1><a href="{% url 'home' %}">Ginásio</a></h1>
+    <nav>
+      <a href="{% url 'class_list' %}">Aulas</a> |
+      <a href="/admin/">Admin</a>
+    </nav>
+    <hr>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

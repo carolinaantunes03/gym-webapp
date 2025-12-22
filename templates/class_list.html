@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Lista de Aulas</h2>
+<ul>
+  {% for a in aulas %}
+  <li><a href="{% url 'class_detail' a.pk %}">{{ a.nome }}</a> — Instrutor: {{ a.instrutor.username }}</li>
+  {% empty %}
+  <li>Não há aulas disponíveis.</li>
+  {% endfor %}
+</ul>
+{% endblock %}
