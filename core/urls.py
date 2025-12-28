@@ -3,11 +3,16 @@ from . import views
 from django.contrib.auth import views as auth_views
 
 urlpatterns = [
-    path('', views.HomeView.as_view(), name='home'),
-    path('aulas/', views.ClassListView.as_view(), name='class_list'),
-    path('aulas/<int:pk>/', views.ClassDetailView.as_view(), name='class_detail'),
-    path('reservar/<int:pk>/', views.BookingCreateView.as_view(), name='book_class'),
-    path('pagamentos/', views.PaymentListView.as_view(), name='payment_list'),
-    path('login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
+    path('', views.home, name='home'),
+    path('login/', views.user_login, name='login'),
+    path('logout/', views.user_logout, name='logout'),
+    path('aluno/dashboard/', views.aluno_dashboard, name='aluno_dashboard'),
+    path('instrutor/dashboard/', views.instrutor_dashboard, name='instrutor_dashboard'),
+    path('horario/', views.horario_aulas, name='horario_aulas'),
+    path('reserva/<int:aula_id>/', views.toggle_reserva, name='toggle_reserva'),
+    path('minhas-reservas/', views.minhas_reservas, name='minhas_reservas'),
+    path('minhas-aulas/', views.minhas_aulas, name='minhas_aulas'),
+    path('pagamentos/', views.pagamentos, name='pagamentos'),
+
+
 ]

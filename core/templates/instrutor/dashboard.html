@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel do Instrutor</title>
+</head>
+<body>
+    <h2>Bem-vindo!</h2>
+    <nav>
+        <a href="{% url 'instrutor_dashboard' %}">Início</a> |
+        <a href="{% url 'horario_aulas' %}">Horário Aulas</a> |
+        <a href="{% url 'minhas_aulas' %}">As minhas aulas</a> |
+        <a href="{% url 'logout' %}">Fechar sessão</a>
+    </nav>
+    <p>Esta é a tua área de instrutor.</p>
+</body>
+</html>

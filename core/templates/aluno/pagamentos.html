@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Pagamentos</title>
+</head>
+<body>
+    <h2>Pagamentos</h2>
+
+    {% if pagamentos %}
+        <ul>
+            {% for pagamento in pagamentos %}
+                <li>
+                    <strong>Mês:</strong> {{ pagamento.mes_referencia }}
+                    <br><strong>Data limite:</strong> {{ pagamento.data_limite|date:"d/m/Y" }}
+                    <br><strong>Status:</strong> {{ pagamento.get_status_display }}
+                    <br><strong>Valor:</strong> {{ pagamento.valor|default:valor_mensalidade }} €
+                    <br>
+                    {% if pagamento.status == 'por_pagar' %}
+                        <form action="#" method="post" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit">Pagar {{ pagamento.valor|default:valor_mensalidade }} €</button>
+                        </form>
+                    {% else %}
+                        <span>Pago ✅</span>
+                    {% endif %}
+                </li>
+                <hr>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Ainda não existem pagamentos registados.</p>
+    {% endif %}
+
+    <a href="{% url 'aluno_dashboard' %}">⬅ Voltar ao painel</a>
+</body>
+</html>

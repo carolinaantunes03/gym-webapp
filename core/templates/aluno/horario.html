@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Horário de Aulas</title>
+</head>
+<body>
+    <h2>Horário de Aulas - {{ dia|date:"d/m/Y" }}</h2>
+    <div>
+        <a href="?dia={{ dia_anterior|date:'Y-m-d' }}">⬅ Dia anterior</a> |
+        <a href="?dia={{ dia_seguinte|date:'Y-m-d' }}">Dia seguinte ➡</a>
+    </div>
+
+    {% if aulas %}
+        <ul>
+            {% for aula in aulas %}
+                <li>
+                    <strong>{{ aula.nome }}</strong> — {{ aula.horario_inicio|date:"H:i" }} ({{ aula.duracao_min }} min)
+                    <br>Instrutor: {{ aula.instrutor.email }}
+                    <br>Capacidade: {{ aula.capacidade_display }}
+
+                    {% if aula.id in reservas_user %}
+                        <form method="post" action="{% url 'toggle_reserva' aula.id %}">
+                            {% csrf_token %}
+                            <button type="submit">Cancelar Reserva</button>
+                        </form>
+                    {% elif aula.capacidade_atual < aula.capacidade_max %}
+                        <form method="post" action="{% url 'toggle_reserva' aula.id %}">
+                            {% csrf_token %}
+                            <button type="submit">Reservar</button>
+                        </form>
+                    {% else %}
+                        <p style="color:red;">Aula cheia</p>
+                    {% endif %}
+                </li>
+                <hr>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Não há atividades neste momento.</p>
+    {% endif %}
+
+    <a href="{% url 'aluno_dashboard' %}">⬅ Voltar ao painel</a>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>As Minhas Reservas</title>
+</head>
+<body>
+    <h2>As Minhas Reservas</h2>
+
+    {% if reservas %}
+        <ul>
+            {% for reserva in reservas %}
+                <li>
+                    <strong>{{ reserva.aula.nome }}</strong> — {{ reserva.aula.horario_inicio|date:"d/m/Y H:i" }} ({{ reserva.aula.duracao_min }} min)
+                    <br>Capacidade: {{ reserva.aula.capacidade_display }}
+                    <br>Instrutor: {{ reserva.aula.instrutor.email }}
+                    <br>
+                    <form action="{% url 'toggle_reserva' reserva.aula.id %}" method="post" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit">Cancelar Reserva</button>
+                    </form>
+                </li>
+                <hr>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Ainda sem reservas.</p>
+    {% endif %}
+
+    <a href="{% url 'aluno_dashboard' %}">⬅ Voltar ao painel</a>
+</body>
+</html>

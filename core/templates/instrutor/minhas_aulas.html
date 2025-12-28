@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Minhas Aulas</title>
+</head>
+<body>
+    <h2>Minhas Aulas</h2>
+
+    {% if aulas %}
+        <ul>
+            {% for aula in aulas %}
+                <li>
+                    <strong>{{ aula.nome }}</strong> — {{ aula.horario_inicio|date:"d/m/Y H:i" }} ({{ aula.duracao_min }} min)
+                    <br>Capacidade: {{ aula.capacidade_display }}
+                </li>
+                <hr>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Ainda sem aulas atribuídas.</p>
+    {% endif %}
+
+    <a href="{% url 'instrutor_dashboard' %}">⬅ Voltar ao painel</a>
+</body>
+</html>

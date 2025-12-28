@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel do Aluno</title>
+</head>
+<body>
+    <h2>Bem-vindo!</h2>
+    <nav>
+        <a href="{% url 'aluno_dashboard' %}">Início</a> |
+        <a href="{% url 'horario_aulas' %}">Horário Aulas</a> |
+        <a href="{% url 'minhas_reservas' %}">As minhas reservas</a> |
+        <a href="{% url 'pagamentos' %}">Pagamentos</a> |
+        <a href="{% url 'logout' %}">Fechar sessão</a>
+    </nav>
+    <p>Esta é a tua área de aluno.</p>
+</body>
+</html>

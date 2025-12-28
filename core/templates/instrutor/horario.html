@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Horário de Aulas (Instrutor)</title>
+</head>
+<body>
+    <h2>As tuas aulas — {{ dia|date:"d/m/Y" }}</h2>
+    <div>
+        <a href="?dia={{ dia_anterior|date:'Y-m-d' }}">⬅ Dia anterior</a> |
+        <a href="?dia={{ dia_seguinte|date:'Y-m-d' }}">Dia seguinte ➡</a>
+    </div>
+
+    {% if aulas %}
+        <ul>
+            {% for aula in aulas %}
+                <li>
+                    <strong>{{ aula.nome }}</strong> — {{ aula.horario_inicio|date:"H:i" }} ({{ aula.duracao_min }} min)
+                    <br>Capacidade: {{ aula.capacidade_display }}
+                </li>
+                <hr>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Não há aulas neste dia.</p>
+    {% endif %}
+
+    <a href="{% url 'instrutor_dashboard' %}">⬅ Voltar ao painel</a>
+</body>
+</html>
