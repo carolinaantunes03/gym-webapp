@@ -13,7 +13,7 @@
                 <li>
                     <strong>{{ reserva.aula.nome }}</strong> — {{ reserva.aula.horario_inicio|date:"d/m/Y H:i" }} ({{ reserva.aula.duracao_min }} min)
                     <br>Capacidade: {{ reserva.aula.capacidade_display }}
-                    <br>Instrutor: {{ reserva.aula.instrutor.email }}
+                    <br>Instrutor: {{ reserva.aula.instrutor.display_name }}
                     <br>
                     <form action="{% url 'toggle_reserva' reserva.aula.id %}" method="post" style="display:inline;">
                         {% csrf_token %}

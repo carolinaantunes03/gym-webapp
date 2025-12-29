@@ -13,6 +13,10 @@ urlpatterns = [
     path('minhas-reservas/', views.minhas_reservas, name='minhas_reservas'),
     path('minhas-aulas/', views.minhas_aulas, name='minhas_aulas'),
     path('pagamentos/', views.pagamentos, name='pagamentos'),
+    path('pagamentos/pagar/<int:pagamento_id>/', views.pagar_pagamento, name='pagar'),
+    path('pagamentos/cancelar/', views.cancelar_subscricao, name='cancelar_subscricao'),
+
+
 
 
 ]

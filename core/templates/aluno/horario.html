@@ -16,7 +16,7 @@
             {% for aula in aulas %}
                 <li>
                     <strong>{{ aula.nome }}</strong> — {{ aula.horario_inicio|date:"H:i" }} ({{ aula.duracao_min }} min)
-                    <br>Instrutor: {{ aula.instrutor.email }}
+                    <br>Instrutor: {{ aula.instrutor.display_name }}
                     <br>Capacidade: {{ aula.capacidade_display }}
 
                     {% if aula.id in reservas_user %}

@@ -26,7 +26,7 @@ class CustomUserManager(BaseUserManager):
 # Custom User Model
 # --------------------------
 class User(AbstractUser):
-    username = None  # Desativamos o campo username
+    username = None
     email = models.EmailField(unique=True)
 
     ROLE_CHOICES = [
@@ -44,12 +44,24 @@ class User(AbstractUser):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='cliente')
     tipo_subscricao = models.CharField(max_length=20, choices=TIPO_SUBS, blank=True, null=True)
 
-    USERNAME_FIELD = 'email'           # agora o login é feito com o email
-    REQUIRED_FIELDS = []               # não obrigamos username
-    objects = CustomUserManager()      # usamos o novo manager
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+    objects = CustomUserManager()
+
+    @property
+    def display_name(self):
+        nome = f"{self.first_name} {self.last_name}".strip()
+        return nome if nome else self.email
 
     def __str__(self):
-        return f"{self.email} ({self.role})"
+        return f"{self.display_name} ({self.role})"
+    
+    cancel_requested_at = models.DateTimeField(null=True, blank=True)
+    cancel_effective_from = models.DateField(null=True, blank=True)  # 1º dia do mês em que deixa de pagar
+
+    def has_active_subscription_for_month(self, month_start_date):
+        # month_start_date = date(YYYY, MM, 1)
+        return (self.cancel_effective_from is None) or (month_start_date < self.cancel_effective_from)
 
 # --------------------------
 # Aula (Class)
@@ -87,7 +99,7 @@ class Booking(models.Model):
     status = models.BooleanField(default=True)  # True = ativa, False = cancelada
 
     def __str__(self):
-        return f"{self.usuario.username} - {self.aula.nome}"
+        return f"{self.usuario.email} - {self.aula.nome}"
 
     class Meta:
         unique_together = ('usuario', 'aula')  # Um utilizador não pode reservar a mesma aula duas vezes
@@ -109,4 +121,10 @@ class Payment(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='por_pagar')
 
     def __str__(self):
-        return f"{self.usuario.username} - {self.mes_referencia} ({self.status})"
+        return f"{self.usuario.display_name} - {self.mes_referencia} ({self.get_status_display()})"
+
+
+    
+    class Meta:
+        unique_together = ('usuario', 'mes_referencia')
+

@@ -7,31 +7,107 @@
 <body>
     <h2>Pagamentos</h2>
 
-    {% if pagamentos %}
+    <p>
+        <strong>Tipo de subscrição:</strong>
+        {{ request.user.get_tipo_subscricao_display|default:"(sem subscrição)" }}
+        <br>
+        <strong>Mensalidade:</strong> {{ valor_mensalidade|floatformat:2 }} €
+        {% if cancel_effective_from %}
+            <br>
+            <strong>Cancelamento agendado para:</strong> {{ cancel_effective_from|date:"d/m/Y" }}
+        {% endif %}
+    </p>
+
+    <hr>
+
+    <!-- PAGAMENTO ATUAL -->
+    <h3>Pagamento atual</h3>
+
+    {% if pagamento_atual %}
+        <p>
+            <strong>Mês:</strong> {{ pagamento_atual.mes_referencia }}
+            <br><strong>Data limite:</strong> {{ pagamento_atual.data_limite|date:"d/m/Y" }}
+            <br><strong>Status:</strong> {{ pagamento_atual.get_status_display }}
+            <br><strong>Valor:</strong> {{ pagamento_atual.valor|floatformat:2 }} €
+        </p>
+
+        {% if pagamento_atual.status == 'por_pagar' %}
+            <form action="{% url 'pagar' pagamento_atual.id %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit">Pagar {{ pagamento_atual.valor|floatformat:2 }} €</button>
+            </form>
+        {% else %}
+            <span>Pago ✅</span>
+        {% endif %}
+    {% else %}
+        <p>Não há pagamento atual (subscrição cancelada/inativa para este mês).</p>
+    {% endif %}
+
+    <hr>
+
+    <!-- FUTUROS (PREVIEW) -->
+    <h3>Pagamentos futuros (preview)</h3>
+
+    {% if futuros %}
         <ul>
-            {% for pagamento in pagamentos %}
+            {% for f in futuros %}
+                <li>
+                    <strong>Mês:</strong> {{ f.mes }}
+                    <br><strong>Data limite:</strong> {{ f.data_limite|date:"d/m/Y" }}
+                    <br><strong>Valor previsto:</strong> {{ f.valor|floatformat:2 }} €
+                    <br><em>(ainda não está registado como pagamento na base de dados)</em>
+                </li>
+                <hr>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Sem pagamentos futuros a mostrar.</p>
+    {% endif %}
+
+    <hr>
+
+    <!-- HISTÓRICO -->
+    <h3>Histórico</h3>
+
+    {% if historico %}
+        <ul>
+            {% for pagamento in historico %}
                 <li>
                     <strong>Mês:</strong> {{ pagamento.mes_referencia }}
                     <br><strong>Data limite:</strong> {{ pagamento.data_limite|date:"d/m/Y" }}
                     <br><strong>Status:</strong> {{ pagamento.get_status_display }}
-                    <br><strong>Valor:</strong> {{ pagamento.valor|default:valor_mensalidade }} €
+                    <br><strong>Valor:</strong> {{ pagamento.valor|floatformat:2 }} €
                     <br>
-                    {% if pagamento.status == 'por_pagar' %}
-                        <form action="#" method="post" style="display:inline;">
-                            {% csrf_token %}
-                            <button type="submit">Pagar {{ pagamento.valor|default:valor_mensalidade }} €</button>
-                        </form>
-                    {% else %}
+                    {% if pagamento.status == 'pago' %}
                         <span>Pago ✅</span>
+                    {% else %}
+                        <span>Por pagar</span>
                     {% endif %}
                 </li>
                 <hr>
             {% endfor %}
         </ul>
     {% else %}
-        <p>Ainda não existem pagamentos registados.</p>
+        <p>Ainda não existem pagamentos no histórico.</p>
     {% endif %}
 
+    <hr>
+
+    <!-- CANCELAR SUBSCRIÇÃO -->
+    {% if cancel_effective_from %}
+        <p><em>A tua subscrição já tem um cancelamento agendado.</em></p>
+    {% else %}
+        <h3>Cancelar subscrição</h3>
+        <p>
+            Regra: para cancelar para um mês, tens de pedir até dia <strong>15</strong> do mês anterior.
+        </p>
+        <form action="{% url 'cancelar_subscricao' %}" method="post">
+            {% csrf_token %}
+            <button type="submit">Cancelar subscrição</button>
+        </form>
+    {% endif %}
+
+    <br>
     <a href="{% url 'aluno_dashboard' %}">⬅ Voltar ao painel</a>
 </body>
 </html>
