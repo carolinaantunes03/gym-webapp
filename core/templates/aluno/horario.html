@@ -1,45 +1,132 @@
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-    <meta charset="UTF-8">
-    <title>Horário de Aulas</title>
-</head>
-<body>
-    <h2>Horário de Aulas - {{ dia|date:"d/m/Y" }}</h2>
-    <div>
-        <a href="?dia={{ dia_anterior|date:'Y-m-d' }}">⬅ Dia anterior</a> |
-        <a href="?dia={{ dia_seguinte|date:'Y-m-d' }}">Dia seguinte ➡</a>
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Horário Semanal{% endblock %}
+
+{% block content %}
+<style>
+    body { background-color: #f5f5f5; }
+
+    .schedule-container {
+        max-width: 95%;
+        margin: 40px auto;
+        background-color: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    table { width: 100%; border-collapse: collapse; text-align: center; }
+    th { background:#f7c26d; color:white; padding:10px; }
+    td { border:1px solid #ddd; height:80px; vertical-align:top; font-size:0.9rem; }
+
+    .aula-card {
+    background:#ff7f50;
+    color:white;
+    border-radius:6px;
+    padding:10px;
+    margin:5px 0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+    .aula-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.btn-reservar {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    background-color: white;
+    color: #ff7f50;
+    font-weight: bold;
+    padding: 6px 0;
+    border-radius: 6px;
+    border: none;
+    margin-top: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.btn-reservar:hover {
+    background-color: #ff7f50;
+    color: white;
+}
+
+    .nav-buttons { text-align:center; margin-bottom:20px; }
+    .nav-buttons a {
+        background:#f7c26d; color:white; padding:8px 15px;
+        margin:0 10px; border-radius:8px; text-decoration:none; font-weight:bold;
+    }
+    .nav-buttons a:hover { background:#f7c26d; }
+</style>
+
+
+<div class="schedule-container">
+    <h2 class="text-center mb-3">Horário Semanal</h2>
+
+    <div class="nav-buttons">
+        <a href="?offset={{ semana_anterior }}">⟵ Semana Anterior</a>
+        <strong>{{ dias_semana.0|date:"d/m/Y" }} - {{ dias_semana.6|date:"d/m/Y" }}</strong>
+        <a href="?offset={{ semana_seguinte }}">Semana Seguinte ⟶</a>
     </div>
 
-    {% if aulas %}
-        <ul>
-            {% for aula in aulas %}
-                <li>
-                    <strong>{{ aula.nome }}</strong> — {{ aula.horario_inicio|date:"H:i" }} ({{ aula.duracao_min }} min)
-                    <br>Instrutor: {{ aula.instrutor.display_name }}
-                    <br>Capacidade: {{ aula.capacidade_display }}
-
-                    {% if aula.id in reservas_user %}
-                        <form method="post" action="{% url 'toggle_reserva' aula.id %}">
-                            {% csrf_token %}
-                            <button type="submit">Cancelar Reserva</button>
-                        </form>
-                    {% elif aula.capacidade_atual < aula.capacidade_max %}
-                        <form method="post" action="{% url 'toggle_reserva' aula.id %}">
-                            {% csrf_token %}
-                            <button type="submit">Reservar</button>
-                        </form>
-                    {% else %}
-                        <p style="color:red;">Aula cheia</p>
-                    {% endif %}
-                </li>
-                <hr>
+    <table>
+    <thead>
+        <tr>
+            <th>Hora</th>
+            {% for dia in dias_semana %}
+                <th>{{ dia|date:"D" }}<br>{{ dia|date:"d/m" }}</th>
             {% endfor %}
-        </ul>
-    {% else %}
-        <p>Não há atividades neste momento.</p>
-    {% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for hora in horas %}
+            <tr>
+                <td><strong>{{ hora|stringformat:"02d" }}:00</strong></td>
+                {% for dia in dias_semana %}
+                    <td>
+                        {% for aula in horarios.items %}
+                            {% if aula.0 == dia %}
+                                {% for sub in aula.1.items %}
+                                    {% if sub.0 == hora %}
+                                        {% for a in sub.1 %}
+    <div class="aula-card">
+        <strong>{{ a.nome }}</strong><br>
+        {{ a.duracao_min }} min<br>
+        Cap: {{ a.capacidade_display }}<br>
+        Instrutor: {{ a.instrutor.first_name }} {{ a.instrutor.last_name }}
 
-    <a href="{% url 'aluno_dashboard' %}">⬅ Voltar ao painel</a>
-</body>
-</html>
+        <form method="post" action="{% url 'toggle_reserva' a.id %}">
+            {% csrf_token %}
+            {% if a.id in minhas_reservas_ids %}
+                <button type="submit" class="btn-reservar">Cancelar</button>
+            {% else %}
+                <button type="submit" class="btn-reservar">Reservar</button>
+            {% endif %}
+        </form>
+    </div>
+{% endfor %}
+
+
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+
+    <div class="text-center mt-4">
+        <a href="{% url 'aluno_dashboard' %}"
+           style="background:#6c757d;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;">
+           Voltar à página inicial
+        </a>
+    </div>
+</div>
+{% endblock %}

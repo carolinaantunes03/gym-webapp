@@ -1,18 +1,103 @@
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-    <meta charset="UTF-8">
-    <title>Painel do Aluno</title>
-</head>
-<body>
-    <h2>Bem-vindo!</h2>
-    <nav>
-        <a href="{% url 'aluno_dashboard' %}">Início</a> |
-        <a href="{% url 'horario_aulas' %}">Horário Aulas</a> |
-        <a href="{% url 'minhas_reservas' %}">As minhas reservas</a> |
-        <a href="{% url 'pagamentos' %}">Pagamentos</a> |
-        <a href="{% url 'logout' %}">Fechar sessão</a>
-    </nav>
-    <p>Esta é a tua área de aluno.</p>
-</body>
-</html>
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Painel do Aluno{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: #737373;
+        color: white;
+        margin: 0;
+        padding: 0;
+    }
+
+    .hero {
+        position: relative;
+        width: 100%;
+        height: 65vh;
+        background-image: url("{% static 'images/dashboard_top.jpg' %}");
+        background-size: cover;
+        background-position: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        text-align: center;
+        
+    }
+
+    .hero::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 0;
+    }
+
+    .hero h1 {
+        position: relative;
+        z-index: 1;
+        font-size: 3rem;
+        font-weight: bold;
+    }
+
+    .options-container {
+        background-color: #737373;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        padding: 50px 20px;
+        min-height: 60vh;
+    }
+
+    .option-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        color: rgb(0, 0, 0);
+        background-color: #f7c26d;
+        padding: 25px;
+        border-radius: 12px;
+        width: 200px;
+        height: 120px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .option-btn:hover {
+        background-color: #9a9188;
+        transform: translateY(-5px);
+    }
+    .logout-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 2; /* garante que o botão fique acima do overlay */
+}
+
+</style>
+
+<div class="hero">
+    <h1>Bem-vindo, {{ user.first_name }}!</h1>
+            <a href="{% url 'logout' %}" class="btn btn-danger logout-btn">Terminar Sessão</a>
+
+
+</div>
+
+<div class="options-container">
+    <a href="{% url 'perfil_aluno' %}" class="option-btn"> Perfil</a>
+    <a href="{% url 'horario_aulas' %}" class="option-btn"> Horário Aulas</a>
+    <a href="{% url 'minhas_reservas' %}" class="option-btn">Reservas</a>
+    <a href="{% url 'pagamentos' %}" class="option-btn">Pagamentos</a>
+    <a href="{% url 'listar_instrutores' %}" class="option-btn"> Marcar treino com PT</a>
+</div>
+{% endblock %}

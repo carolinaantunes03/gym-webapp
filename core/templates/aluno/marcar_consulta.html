@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Marcar Consulta{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: #f0f2f5;
+    }
+
+    .card-custom {
+        background-color: #ffffff;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        max-width: 400px;
+        width: 100%;
+    }
+
+    .card-custom:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+
+    .instrutor-img {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        margin-top: 15px;
+    }
+
+    .btn-custom {
+        background-color: #ff6600;
+        color: white;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-custom:hover {
+        background-color: #e65c00;
+        transform: translateY(-2px);
+    }
+
+    .btn-back {
+        background-color: #6c757d;
+        color: white;
+        border-radius: 8px;
+        padding: 10px 25px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s ease;
+    }
+
+    .btn-back:hover {
+        background-color: #5a6268;
+        transform: translateY(-2px);
+    }
+</style>
+
+<div class="container py-5">
+
+    <!-- Título -->
+    <div class="text-center mb-5">
+        <h2>Marcar Treino com {{ instrutor.display_name }}</h2>
+        {% if instrutor.foto_perfil %}
+            <img src="{{ instrutor.foto_perfil.url }}" alt="Foto de {{ instrutor.display_name }}" 
+                 class="rounded-circle instrutor-img">
+        {% else %}
+            <img src="{% static 'images/default_profile.png' %}" alt="Foto de {{ instrutor.display_name }}" 
+                 class="rounded-circle instrutor-img">
+        {% endif %}
+    </div>
+
+    <!-- Form de marcação -->
+    <div class="d-flex justify-content-center">
+        <form method="post" class="card-custom">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="horario" class="form-label">Escolhe um horário disponível:</label>
+                <select name="horario" id="horario" class="form-select" required>
+                    {% for slot in disponiveis %}
+                        <option value="{{ slot|date:'Y-m-d\\TH:i:s' }}">
+                            {{ slot|date:"d/m/Y H:i" }}
+                        </option>
+                    {% empty %}
+                        <option disabled>Não há horários disponíveis nos próximos 7 dias</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-custom w-100 mt-3">Marcar Treino</button>
+        </form>
+    </div>
+
+    <!-- Botão de voltar -->
+    <div class="text-center mt-4">
+        <a href="{% url 'listar_instrutores' %}" class="btn-back">Voltar à Lista de Instrutores</a>
+    </div>
+
+</div>
+{% endblock %}

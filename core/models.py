@@ -43,6 +43,7 @@ class User(AbstractUser):
 
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='cliente')
     tipo_subscricao = models.CharField(max_length=20, choices=TIPO_SUBS, blank=True, null=True)
+    foto_perfil = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -127,4 +128,24 @@ class Payment(models.Model):
     
     class Meta:
         unique_together = ('usuario', 'mes_referencia')
+
+# --------------------------
+# Aula com Personal Trainer
+# --------------------------
+class PTSession(models.Model):
+    aluno = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pt_sessions',
+                              limit_choices_to={'role': 'cliente'})
+    instrutor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pt_sessions_dadas',
+                                  limit_choices_to={'role': 'instrutor'})
+    horario = models.DateTimeField()
+    duracao_min = models.PositiveIntegerField(default=60)  # padrão 1h
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.aluno.display_name} - {self.instrutor.display_name} @ {self.horario.strftime('%d/%m/%Y %H:%M')}"
+
+    class Meta:
+        unique_together = ('instrutor', 'horario')  # um instrutor não pode ter duas sessões no mesmo horário
+
+
 

@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Escolher Instrutor{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: #f5f5f5; /* fundo da página */
+    }
+
+    .instrutor-card {
+        width: 50rem;
+        border-radius: 20px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background-color: rgb(201, 196, 196);
+    }
+
+    .instrutor-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+
+    .instrutor-card img {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        margin-top: 15px;
+    }
+
+    .btn-custom {
+        background-color: #ff6600;
+        color: white;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-custom:hover {
+        background-color: #e65c00;
+        transform: translateY(-2px);
+    }
+
+    .btn-back {
+        background-color: #6c757d;
+        color: white;
+        border-radius: 8px;
+        padding: 10px 25px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s ease;
+    }
+
+    .btn-back:hover {
+        background-color: #5a6268;
+        transform: translateY(-2px);
+    }
+</style>
+
+<div class="container py-5">
+    <h2 class="text-center mb-4">Escolhe um instrutor para marcar um treino</h2>
+
+    <div class="row justify-content-center g-4">
+        {% for instrutor in instrutores %}
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex justify-content-center">
+            <div class="instrutor-card text-center">
+                {% if instrutor.foto_perfil %}
+                    <img src="{{ instrutor.foto_perfil.url }}" class="rounded-circle" 
+                         alt="Foto de {{ instrutor.display_name }}">
+                {% else %}
+                    <img src="{% static 'images/default_profile.png' %}" class="rounded-circle" 
+                         alt="Foto de {{ instrutor.display_name }}">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ instrutor.display_name }}</h5>
+                    <a href="{% url 'marcar_consulta' instrutor.id %}" class="btn btn-custom mt-2">Marcar Treino</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p>Não há instrutores disponíveis.</p>
+        {% endfor %}
+    </div>
+
+    <div class="text-center mt-5">
+        <a href="{% url 'aluno_dashboard' %}" class="btn-back">Voltar à página inicial</a>
+    </div>
+</div>
+{% endblock %}

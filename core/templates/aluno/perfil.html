@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Perfil do Cliente{% endblock %}
+
+{% block content %}
+<h2>Perfil do Cliente</h2>
+
+<p><strong>Nome:</strong> {{ user.display_name }}</p>
+<p><strong>Email:</strong> {{ user.email }}</p>
+<p><strong>Subscrição:</strong> {{ user.get_tipo_subscricao_display }}</p>
+<p><strong>Data de entrada:</strong> {{ user.date_joined|date:"d/m/Y" }}</p>
+
+<hr>
+
+<h3>Estatísticas deste mês</h3>
+<p>Total de aulas: {{ total_aulas }}</p>
+{% if aula_mais_frequente %}
+<p>Aula mais frequentada: <strong>{{ aula_mais_frequente }}</strong></p>
+{% endif %}
+
+<canvas id="graficoAulas" width="400" height="200"></canvas>
+
+<!-- Converte listas Python em JSON seguro -->
+{{ labels|json_script:"labels-data" }}
+{{ data|json_script:"values-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const labels = JSON.parse(document.getElementById('labels-data').textContent);
+const dataValues = JSON.parse(document.getElementById('values-data').textContent);
+
+const ctx = document.getElementById('graficoAulas').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Número de aulas frequentadas',
+      data: dataValues,
+      backgroundColor: 'rgba(54, 162, 235, 0.6)',
+      borderColor: 'rgba(54, 162, 235, 1)',
+      borderWidth: 1
+    }]
+  },
+  options: { scales: { y: { beginAtZero: true } } }
+});
+</script>
+{% endblock %}

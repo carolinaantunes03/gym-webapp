@@ -1,8 +1,33 @@
-<!DOCTYPE html>
-<html>
-<head><title>Ginásio - Início</title></head>
-<body>
-    <h2>Bem-vindo ao Ginásio!</h2>
-    <a href="{% url 'login' %}">Entrar</a>
-</body>
-</html>
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Bem-vindo ao GymBDAI{% endblock %}
+
+{% block content %}
+
+<div id="homeCarousel" class="carousel slide home-carousel" data-bs-ride="carousel">
+    <div class="carousel-inner">
+        <div class="carousel-item active">
+            <img src="{% static 'images/gym1.jpg' %}" class="d-block w-100" alt="Ginásio 1">
+        </div>
+        <div class="carousel-item">
+            <img src="{% static 'images/gym2.jpg' %}" class="d-block w-100" alt="Ginásio 2">
+        </div>
+        <div class="carousel-item">
+            <img src="{% static 'images/gym3.jpg' %}" class="d-block w-100" alt="Ginásio 3">
+        </div>
+        <div class="carousel-item">
+            <img src="{% static 'images/gym4.jpg' %}" class="d-block w-100" alt="Ginásio 4">
+        </div>
+    </div>
+
+    <div class="carousel-caption text-center">
+        <h1>Bem-vindo ao GYMDBAI</h1>
+        <div class="mt-4">
+            <a href="{% url 'login' %}" class="btn btn-primary btn-lg">Login</a>
+            <a href="{% url 'signup_cliente' %}" class="btn btn-success btn-lg">Sign Up</a>
+            <a href="{% url 'signup_instrutor' %}" class="btn btn-success btn-lg">Espaço Instrutores</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

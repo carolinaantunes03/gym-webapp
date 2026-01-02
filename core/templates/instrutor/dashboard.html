@@ -1,17 +1,19 @@
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-    <meta charset="UTF-8">
-    <title>Painel do Instrutor</title>
-</head>
-<body>
-    <h2>Bem-vindo!</h2>
-    <nav>
-        <a href="{% url 'instrutor_dashboard' %}">Início</a> |
-        <a href="{% url 'horario_aulas' %}">Horário Aulas</a> |
-        <a href="{% url 'minhas_aulas' %}">As minhas aulas</a> |
-        <a href="{% url 'logout' %}">Fechar sessão</a>
-    </nav>
-    <p>Esta é a tua área de instrutor.</p>
-</body>
-</html>
+{% extends 'base.html' %}
+
+{% block title %}Painel do Instrutor{% endblock %}
+
+{% block content %}
+<h2>Bem-vindo, {{ user.first_name }}!</h2>
+
+<p>Esta é a tua área de instrutor.</p>
+
+<div style="margin-top: 20px;">
+    <h3>Atalhos rápidos</h3>
+    <ul>
+        <li><a href="{% url 'horario_aulas' %}">📅 Ver horário das aulas</a></li>
+        <li><a href="{% url 'minhas_aulas' %}">🏋️‍♂️ Minhas aulas</a></li>
+        <li><a href="{% url 'instrutor_horario' %}">➕ Criar novas aulas</a></li>
+        <li><a href="{% url 'perfil_instrutor' %}">👤 Ver perfil</a></li>
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Perfil do Instrutor{% endblock %}
+
+{% block content %}
+{{ labels|json_script:"labels-data" }}
+{{ data|json_script:"values-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const labels = JSON.parse(document.getElementById('labels-data').textContent);
+const dataValues = JSON.parse(document.getElementById('values-data').textContent);
+const ctx = document.getElementById('graficoInstrutor').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Participantes por aula',
+      data: dataValues,
+      backgroundColor: 'rgba(255, 159, 64, 0.6)',
+      borderColor: 'rgba(255, 159, 64, 1)',
+      borderWidth: 1
+    }]
+  },
+  options: { scales: { y: { beginAtZero: true } } }
+});
+</script>
+{% endblock %}
