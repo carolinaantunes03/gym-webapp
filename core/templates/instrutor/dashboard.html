@@ -1,19 +1,100 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Painel do Instrutor{% endblock %}
 
 {% block content %}
-<h2>Bem-vindo, {{ user.first_name }}!</h2>
+<style>
+    body {
+        background-color: #737373;
+        color: white;
+        margin: 0;
+        padding: 0;
+    }
 
-<p>Esta é a tua área de instrutor.</p>
+    .hero {
+        position: relative;
+        width: 100%;
+        height: 65vh;
+        background-image: url("{% static 'images/dashboard_top.jpg' %}");
+        background-size: cover;
+        background-position: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        text-align: center;
+    }
 
-<div style="margin-top: 20px;">
-    <h3>Atalhos rápidos</h3>
-    <ul>
-        <li><a href="{% url 'horario_aulas' %}">📅 Ver horário das aulas</a></li>
-        <li><a href="{% url 'minhas_aulas' %}">🏋️‍♂️ Minhas aulas</a></li>
-        <li><a href="{% url 'instrutor_horario' %}">➕ Criar novas aulas</a></li>
-        <li><a href="{% url 'perfil_instrutor' %}">👤 Ver perfil</a></li>
-    </ul>
+    .hero::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 0;
+    }
+
+    .hero h1 {
+        position: relative;
+        z-index: 1;
+        font-size: 3rem;
+        font-weight: bold;
+    }
+
+    .options-container {
+        background-color: #737373;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        padding: 50px 20px;
+        min-height: 60vh;
+    }
+
+    .option-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        color: rgb(0, 0, 0);
+        background-color: #f7c26d;
+        padding: 25px;
+        border-radius: 12px;
+        width: 200px;
+        height: 120px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .option-btn:hover {
+        background-color: #9a9188;
+        transform: translateY(-5px);
+    }
+
+    .logout-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 2;
+    }
+</style>
+
+<div class="hero">
+    <h1>Bem-vindo, {{ user.first_name }}!</h1>
+    <a href="{% url 'logout' %}" class="btn btn-danger logout-btn">Terminar Sessão</a>
 </div>
+
+<div class="options-container">
+    <a href="{% url 'perfil_instrutor' %}" class="option-btn"> Perfil</a>
+    <a href="{% url 'instrutor_horario' %}" class="option-btn">Adicionar Aulas</a>
+    <a href="{% url 'minhas_aulas' %}" class="option-btn"> Minhas Aulas</a>
+    <a href="{% url 'horario_aulas' %}" class="option-btn"> Horário Geral</a>
+</div>
+
 {% endblock %}

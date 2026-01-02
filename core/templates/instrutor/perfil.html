@@ -4,6 +4,154 @@
 {% block title %}Perfil do Instrutor{% endblock %}
 
 {% block content %}
+<style>
+    body {
+        background-color: #f5f5f5;
+    }
+
+    .perfil-container {
+        max-width: 900px;
+        margin: 40px auto;
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .perfil-header {
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+
+    .perfil-header img {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 4px solid #f7c26d;
+    }
+
+    .perfil-info h2 {
+        font-size: 2rem;
+        margin-bottom: 5px;
+        color: #333;
+    }
+
+    .perfil-info p {
+        margin: 3px 0;
+        color: #666;
+    }
+
+    .btn-upload {
+        display: inline-block;
+        background-color: #f7c26d;
+        color: white;
+        padding: 8px 15px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-upload:hover {
+        background-color: #ff7f50;
+    }
+
+    .stats-container {
+        display: flex;
+        justify-content: space-around;
+        background: #fff5e6;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+
+    .stat {
+        text-align: center;
+    }
+
+    .stat h3 {
+        color: #ff7f50;
+        font-size: 2rem;
+        margin: 0;
+    }
+
+    .stat p {
+        color: #333;
+        margin: 0;
+    }
+
+    .grafico-container {
+        margin-top: 30px;
+        text-align: center;
+    }
+
+    .btn-back {
+        display: inline-block;
+        background-color: #6c757d;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: background-color 0.3s;
+        margin-top: 30px;
+    }
+
+    .btn-back:hover {
+        background-color: #5a6268;
+    }
+</style>
+
+<div class="perfil-container">
+
+    <div class="perfil-header">
+        {% if user.foto_perfil %}
+            <img src="{{ user.foto_perfil.url }}" alt="Foto de perfil">
+        {% else %}
+            <img src="{% static 'images/default_profile.png' %}" alt="Sem foto">
+        {% endif %}
+
+        <div class="perfil-info">
+            <h2>{{ user.first_name }} {{ user.last_name }}</h2>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>Data de entrada:</strong> {{ user.date_joined|date:"d/m/Y" }}</p>
+
+            <form method="post" enctype="multipart/form-data" style="margin-top:10px;">
+                {% csrf_token %}
+                <label for="foto_perfil" class="btn-upload">Alterar Foto</label>
+                <input type="file" name="foto_perfil" id="foto_perfil" style="display:none;" onchange="this.form.submit()">
+            </form>
+        </div>
+    </div>
+
+    <div class="stats-container">
+        <div class="stat">
+            <h3>{{ total_aulas }}</h3>
+            <p>Aulas este mês</p>
+        </div>
+        <div class="stat">
+            <h3>{{ total_participantes }}</h3>
+            <p>Total de participantes</p>
+        </div>
+        <div class="stat">
+            <h3>{{ aula_mais_popular|default:"—" }}</h3>
+            <p>Aula mais popular</p>
+        </div>
+    </div>
+
+    <div class="grafico-container">
+        <h4>Participantes por Aula</h4>
+        <canvas id="graficoInstrutor" width="400" height="200"></canvas>
+    </div>
+
+    <div class="text-center">
+        <a href="{% url 'instrutor_dashboard' %}" class="btn-back">Voltar à página inicial</a>
+    </div>
+</div>
+
 {{ labels|json_script:"labels-data" }}
 {{ data|json_script:"values-data" }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -16,14 +164,23 @@ new Chart(ctx, {
   data: {
     labels: labels,
     datasets: [{
-      label: 'Participantes por aula',
+      label: 'Participantes por aula (sessão individual)',
       data: dataValues,
-      backgroundColor: 'rgba(255, 159, 64, 0.6)',
+      backgroundColor: 'rgba(255, 159, 64, 0.7)',
       borderColor: 'rgba(255, 159, 64, 1)',
       borderWidth: 1
     }]
   },
-  options: { scales: { y: { beginAtZero: true } } }
+  options: {
+    indexAxis: 'y', // gráfico horizontal, mais legível com muitas labels
+    responsive: true,
+    scales: {
+      x: { beginAtZero: true, title: { display: true, text: 'Número de participantes' }},
+      y: { ticks: { autoSkip: false } }
+    }
+  }
 });
 </script>
+
+
 {% endblock %}

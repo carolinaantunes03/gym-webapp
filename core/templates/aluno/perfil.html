@@ -4,46 +4,105 @@
 {% block title %}Perfil do Cliente{% endblock %}
 
 {% block content %}
-<h2>Perfil do Cliente</h2>
+<style>
+body {
+    background-color: #f5f5f5;
+    color: #333;
+}
 
-<p><strong>Nome:</strong> {{ user.display_name }}</p>
-<p><strong>Email:</strong> {{ user.email }}</p>
-<p><strong>Subscrição:</strong> {{ user.get_tipo_subscricao_display }}</p>
-<p><strong>Data de entrada:</strong> {{ user.date_joined|date:"d/m/Y" }}</p>
+.profile-container {
+    max-width: 800px;
+    margin: 40px auto;
+    background-color: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
 
-<hr>
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
 
-<h3>Estatísticas deste mês</h3>
-<p>Total de aulas: {{ total_aulas }}</p>
-{% if aula_mais_frequente %}
-<p>Aula mais frequentada: <strong>{{ aula_mais_frequente }}</strong></p>
-{% endif %}
+.stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 40px;
+}
 
-<canvas id="graficoAulas" width="400" height="200"></canvas>
+.stat-card {
+    background-color: #f7c26d;
+    color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    width: 200px;
+    text-align: center;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
 
-<!-- Converte listas Python em JSON seguro -->
-{{ labels|json_script:"labels-data" }}
-{{ data|json_script:"values-data" }}
+canvas {
+    margin-top: 20px;
+}
+</style>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-const labels = JSON.parse(document.getElementById('labels-data').textContent);
-const dataValues = JSON.parse(document.getElementById('values-data').textContent);
+<div class="profile-container">
+    <h2>Perfil do Cliente</h2>
 
-const ctx = document.getElementById('graficoAulas').getContext('2d');
-new Chart(ctx, {
-  type: 'bar',
-  data: {
-    labels: labels,
-    datasets: [{
-      label: 'Número de aulas frequentadas',
-      data: dataValues,
-      backgroundColor: 'rgba(54, 162, 235, 0.6)',
-      borderColor: 'rgba(54, 162, 235, 1)',
-      borderWidth: 1
-    }]
-  },
-  options: { scales: { y: { beginAtZero: true } } }
-});
-</script>
+    <p><strong>Nome:</strong> {{ user.display_name }}</p>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <p><strong>Subscrição:</strong> {{ user.get_tipo_subscricao_display }}</p>
+    <p><strong>Data de entrada:</strong> {{ user.date_joined|date:"d/m/Y" }}</p>
+
+    <hr>
+
+    <h3>Estatísticas deste mês</h3>
+
+    <div class="stats">
+        <div class="stat-card">
+            Total de aulas<br>
+            <span style="font-size:1.5rem">{{ total_aulas }}</span>
+        </div>
+        {% if aula_mais_frequente %}
+        <div class="stat-card">
+            Aula mais frequentada<br>
+            <span style="font-size:1.2rem">{{ aula_mais_frequente }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <canvas id="graficoAulas" width="400" height="200"></canvas>
+
+    {{ labels|json_script:"labels-data" }}
+    {{ data|json_script:"values-data" }}
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    const labels = JSON.parse(document.getElementById('labels-data').textContent);
+    const dataValues = JSON.parse(document.getElementById('values-data').textContent);
+
+    const ctx = document.getElementById('graficoAulas').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Número de aulas frequentadas',
+          data: dataValues,
+          backgroundColor: 'rgba(54, 162, 235, 0.6)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: { 
+          responsive: true,
+          scales: { 
+              y: { beginAtZero: true, stepSize: 1 } 
+          } 
+      }
+    });
+    </script>
+</div>
 {% endblock %}

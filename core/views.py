@@ -92,12 +92,8 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from core.models import Class
-
 @login_required
 def horario_aulas(request):
-    if request.user.role != "cliente":
-        return redirect("instrutor_dashboard")
-
     # Segunda-feira da semana atual
     hoje = timezone.localdate()
     offset = int(request.GET.get("offset", 0))
@@ -120,10 +116,8 @@ def horario_aulas(request):
         .order_by("horario_inicio")
     )
 
-    horarios = {}
-    for dia in dias_semana:
-        horarios[dia] = {hora: [] for hora in horas}
-
+    # Dicionário de horários
+    horarios = {dia: {hora: [] for hora in horas} for dia in dias_semana}
     for aula in aulas:
         dt_local = aula.horario_inicio.astimezone(timezone.get_current_timezone())
         dia = dt_local.date()
@@ -131,23 +125,26 @@ def horario_aulas(request):
         if dia in horarios and hora in horarios[dia]:
             horarios[dia][hora].append(aula)
 
-    # IDs das aulas já reservadas pelo aluno
-    minhas_reservas_ids = set(
-        Booking.objects.filter(usuario=request.user, status=True).values_list('aula_id', flat=True)
-    )
-
     context = {
         "dias_semana": dias_semana,
         "horas": horas,
         "horarios": horarios,
         "semana_anterior": offset - 1,
         "semana_seguinte": offset + 1,
-        "minhas_reservas_ids": minhas_reservas_ids,
     }
-    return render(request, "aluno/horario.html", context)
 
+    if request.user.role == "cliente":
+        # IDs das aulas já reservadas pelo aluno
+        minhas_reservas_ids = set(
+            Booking.objects.filter(usuario=request.user, status=True).values_list('aula_id', flat=True)
+        )
+        context["minhas_reservas_ids"] = minhas_reservas_ids
+        template = "aluno/horario.html"
+    else:
+        # instrutor
+        template = "instrutor/horario.html"
 
-
+    return render(request, template, context)
 
 
 
@@ -182,25 +179,48 @@ def toggle_reserva(request, aula_id):
 
 @login_required
 def minhas_reservas(request):
-    # Apenas alunos podem ver
     if request.user.role != 'cliente':
         return redirect('horario_aulas')
 
-    # Reservas ativas do usuário
-    reservas_aulas = Booking.objects.filter(
-        usuario=request.user,
-        status=True
-    ).select_related('aula', 'aula__instrutor').order_by('aula__horario_inicio')
+    agora = timezone.now()
 
-    # Sessões de PT do usuário
-    reservas_pt = PTSession.objects.filter(
-        aluno=request.user
-    ).select_related('instrutor').order_by('horario')
+    reservas_aulas = list(
+        Booking.objects.filter(usuario=request.user, status=True, aula__horario_inicio__gte=agora)
+        .select_related('aula', 'aula__instrutor')
+        .order_by('aula__horario_inicio')
+    )
 
-    context = {
-        'reservas_aulas': reservas_aulas,
-        'reservas_pt': reservas_pt,
-    }
+    reservas_pt = list(
+        PTSession.objects.filter(aluno=request.user, horario__gte=agora)
+        .select_related('instrutor')
+        .order_by('horario')
+    )
+
+    eventos = []
+    for r in reservas_aulas:
+        eventos.append({
+            'tipo': 'aula',
+            'data': r.aula.horario_inicio,
+            'nome': r.aula.nome,
+            'duracao': r.aula.duracao_min,
+            'instrutor': r.aula.instrutor.display_name,
+            'capacidade': r.aula.capacidade_display,
+            'id': r.aula.id,
+        })
+
+    for pt in reservas_pt:
+        eventos.append({
+            'tipo': 'pt',
+            'data': pt.horario,
+            'nome': 'Sessão PT',
+            'duracao': pt.duracao_min,
+            'instrutor': pt.instrutor.display_name,
+            'id': pt.id,
+        })
+
+    eventos.sort(key=lambda e: e['data'])
+
+    context = {'eventos': eventos}
     return render(request, 'aluno/minhas_reservas.html', context)
 
 @require_POST
@@ -212,18 +232,53 @@ def cancelar_pt(request, pt_id):
     return redirect('minhas_reservas')
 
 
-
 @login_required
 def minhas_aulas(request):
-    # Apenas instrutores podem ver
     if request.user.role != 'instrutor':
         return redirect('horario_aulas')
 
-    # Obter todas as aulas do instrutor
-    aulas = Class.objects.filter(instrutor=request.user).order_by('horario_inicio')
+    agora = timezone.localtime()  # garante o timezone local
+
+    # Aulas futuras do instrutor
+    aulas = Class.objects.filter(
+        instrutor=request.user,
+        horario_inicio__gte=agora
+    ).select_related('instrutor').order_by('horario_inicio')
+
+    # Sessões PT futuras do instrutor
+    pt_sessions = PTSession.objects.filter(
+        instrutor=request.user,
+        horario__gte=agora
+    ).select_related('aluno').order_by('horario')
+
+    # Combinar ambas num único array, com timestamps para ordenar
+    eventos = []
+
+    for a in aulas:
+        eventos.append({
+            'tipo': 'aula',
+            'data': a.horario_inicio,
+            'nome': a.nome,
+            'duracao': a.duracao_min,
+            'capacidade': a.capacidade_display,
+            'aluno': None,
+        })
+
+    for pt in pt_sessions:
+        eventos.append({
+            'tipo': 'pt',
+            'data': pt.horario,
+            'nome': f'Treino PT com {pt.aluno.display_name}',
+            'duracao': pt.duracao_min,
+            'capacidade': None,
+            'aluno': pt.aluno.display_name,
+        })
+
+    # Ordenar cronologicamente
+    eventos.sort(key=lambda e: e['data'])
 
     context = {
-        'aulas': aulas,
+        'eventos': eventos,
     }
     return render(request, 'instrutor/minhas_aulas.html', context)
 
@@ -375,7 +430,7 @@ def perfil_redirect(request):
 
 @login_required
 def perfil_aluno(request):
-    """Página de perfil do cliente"""
+    """Página de perfil do aluno"""
     if request.user.role != 'cliente':
         return redirect('perfil_instrutor')
 
@@ -383,7 +438,7 @@ def perfil_aluno(request):
     inicio_mes = hoje.replace(day=1)
     fim_mes = (inicio_mes + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
-    # Aulas frequentadas neste mês
+    # Buscar todas as reservas confirmadas do aluno neste mês
     reservas_mes = Booking.objects.filter(
         usuario=request.user,
         aula__horario_inicio__date__gte=inicio_mes,
@@ -392,19 +447,19 @@ def perfil_aluno(request):
     ).select_related('aula')
 
     total_aulas = reservas_mes.count()
-    contagem_por_tipo = Counter(r.aula.nome for r in reservas_mes)
-    aula_mais_frequente = None
-    if contagem_por_tipo:
-        aula_mais_frequente = max(contagem_por_tipo, key=contagem_por_tipo.get)
 
-    # Preparar dados para Chart.js
+    # Contagem por tipo de aula
+    contagem_por_tipo = Counter(r.aula.nome for r in reservas_mes)
+
+    aula_mais_frequente = max(contagem_por_tipo, key=contagem_por_tipo.get) if contagem_por_tipo else None
+
+    # Preparar dados para gráfico
     labels = list(contagem_por_tipo.keys())
     data = list(contagem_por_tipo.values())
 
     context = {
         'user': request.user,
         'total_aulas': total_aulas,
-        'contagem_por_tipo': contagem_por_tipo,
         'aula_mais_frequente': aula_mais_frequente,
         'labels': labels,
         'data': data,
@@ -423,23 +478,44 @@ def perfil_instrutor(request):
     inicio_mes = hoje.replace(day=1)
     fim_mes = (inicio_mes + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
+    # Upload de nova foto de perfil
+    if request.method == 'POST' and request.FILES.get('foto_perfil'):
+        request.user.foto_perfil = request.FILES['foto_perfil']
+        request.user.save()
+        messages.success(request, "Foto de perfil atualizada com sucesso!")
+        return redirect('perfil_instrutor')
+
+    # Aulas deste mês
     aulas_mes = Class.objects.filter(
         instrutor=request.user,
         horario_inicio__date__gte=inicio_mes,
         horario_inicio__date__lte=fim_mes,
-    )
+    ).order_by('horario_inicio')
 
     total_aulas = aulas_mes.count()
 
-    # Contar total de participantes por aula
-    participacoes = Booking.objects.filter(
-        aula__in=aulas_mes,
-        status=True
-    ).values('aula__nome').annotate(total=Count('id'))
+    # Participações por aula individual (não somadas por nome)
+    participacoes = (
+        Booking.objects.filter(aula__in=aulas_mes, status=True)
+        .values('aula__nome', 'aula__horario_inicio')
+        .annotate(total=Count('id'))
+        .order_by('-total')  # aula com mais alunos primeiro
+    )
 
-    labels = [p['aula__nome'] for p in participacoes]
+    # Labels detalhados com data/hora
+    labels = [
+        f"{p['aula__nome']} ({p['aula__horario_inicio'].strftime('%d/%m %H:%M')})"
+        for p in participacoes
+    ]
     data = [p['total'] for p in participacoes]
+
     total_participantes = sum(data)
+
+    # Aula mais popular
+    aula_mais_popular = None
+    if participacoes:
+        aula_top = participacoes[0]
+        aula_mais_popular = f"{aula_top['aula__nome']} ({aula_top['aula__horario_inicio'].strftime('%d/%m %H:%M')})"
 
     context = {
         'user': request.user,
@@ -447,9 +523,12 @@ def perfil_instrutor(request):
         'total_participantes': total_participantes,
         'labels': labels,
         'data': data,
+        'aula_mais_popular': aula_mais_popular,
     }
 
     return render(request, 'instrutor/perfil.html', context)
+
+
 
 def signup_cliente(request):
     if request.method == 'POST':
@@ -540,18 +619,32 @@ def instrutor_horario(request):
     if request.user.role != 'instrutor':
         return redirect('horario_aulas')
     
-    aulas = Class.objects.filter(instrutor=request.user).order_by('horario_inicio')
+    agora = timezone.now()
+
+    # Apenas aulas futuras
+    aulas = Class.objects.filter(
+        instrutor=request.user,
+        horario_inicio__gte=agora
+    ).order_by('horario_inicio')
 
     if request.method == 'POST':
         nome = request.POST.get('nome_aula')
         horario = request.POST.get('horario_inicio')
         duracao = int(request.POST.get('duracao', 60))
-        Class.objects.create(nome=nome, instrutor=request.user,
-                             horario_inicio=horario, duracao_min=duracao)
+        capacidade = int(request.POST.get('capacidade_max', 20))
+
+        Class.objects.create(
+            nome=nome,
+            instrutor=request.user,
+            horario_inicio=horario,
+            duracao_min=duracao,
+            capacidade_max=capacidade
+        )
         messages.success(request, "Aula criada com sucesso!")
         return redirect('instrutor_horario')
 
     return render(request, 'instrutor/horario_gerir.html', {'aulas': aulas})
+
 
 @login_required
 def listar_instrutores(request):

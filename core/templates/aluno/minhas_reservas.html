@@ -24,54 +24,45 @@
         background:#ff7f50;
         color:white;
         border-radius:6px;
-        padding:5px;
-        margin:3px;
+        padding:8px;
+        margin:5px 0;
         position: relative;
-        overflow: hidden;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
-        font-size:0.85rem;
+        font-size:0.9rem;
     }
 
     .reserva-card.pt {
-        background:#6fa8dc; /* cor diferente para sessões PT */
+        background:#6fa8dc; /* azul claro para sessões PT */
     }
 
     .reserva-card:hover {
-        transform: scale(1.05);
+        transform: scale(1.03);
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     }
 
     .btn-cancelar {
-        position: absolute;
-        bottom: 5px;
-        right: 5px;
-        background-color: rgba(255,255,255,0.9);
+        display: inline-block;
+        margin-top: 8px;
+        background-color: white;
         color: #ff7f50;
         padding: 5px 10px;
         border-radius: 6px;
         text-decoration: none;
         font-weight: bold;
-        font-size: 0.75rem;
-        opacity: 0;
+        font-size: 0.8rem;
+        border: none;
         transition: all 0.3s ease;
     }
 
-    .reserva-card:hover .btn-cancelar {
-        opacity: 1;
-        transform: translateY(-3px);
+    .reserva-card.pt .btn-cancelar {
+        color: #6fa8dc;
     }
 
     .btn-cancelar:hover {
-        background-color: #ff7f50;
+        background-color: transparent;
         color: white;
+        outline: 1px solid white;
     }
-
-    .nav-buttons { text-align:center; margin-bottom:20px; }
-    .nav-buttons a {
-        background:#f7c26d; color:white; padding:8px 15px;
-        margin:0 10px; border-radius:8px; text-decoration:none; font-weight:bold;
-    }
-    .nav-buttons a:hover { background:#f7c26d; }
 </style>
 
 <div class="schedule-container">
@@ -80,52 +71,45 @@
     <table>
         <thead>
             <tr>
-                <th>Hora</th>
-                <th>Reserva</th>
+                <th>Data / Hora</th>
+                <th>Detalhes</th>
             </tr>
         </thead>
         <tbody>
-            {% for reserva in reservas_aulas %}
-            <tr>
-                <td>{{ reserva.aula.horario_inicio|date:"d/m/Y H:i" }}</td>
-                <td>
-                    <div class="reserva-card">
-                        <strong>{{ reserva.aula.nome }}</strong><br>
-                        {{ reserva.aula.duracao_min }} min<br>
-                        Instrutor: {{ reserva.aula.instrutor.display_name }}
-                        <form action="{% url 'toggle_reserva' reserva.aula.id %}" method="post" style="display:inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn-cancelar">Cancelar</button>
-                        </form>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-
-            {% for pt in reservas_pt %}
-            <tr>
-                <td>{{ pt.horario|date:"d/m/Y H:i" }}</td>
-                <td>
-                    <div class="reserva-card pt">
-                        <strong>PT Session</strong><br>
-                        {{ pt.duracao_min }} min<br>
-                        Instrutor: {{ pt.instrutor.display_name }}
-                        <form action="{% url 'cancelar_pt' pt.id %}" method="post" style="display:inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn-cancelar">Cancelar</button>
-                        </form>
-                    </div>
-                </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="2">Ainda não tens reservas.</td></tr>
-            {% endfor %}
+            {% if eventos %}
+                {% for e in eventos %}
+                    <tr>
+                        <td>{{ e.data|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <div class="reserva-card {% if e.tipo == 'pt' %}pt{% endif %}">
+                                <strong>{{ e.nome }}</strong><br>
+                                {{ e.duracao }} min<br>
+                                Instrutor: {{ e.instrutor }}
+                                {% if e.tipo == 'aula' %}
+                                    <br>Capacidade: {{ e.capacidade }}
+                                    <form action="{% url 'toggle_reserva' e.id %}" method="post" style="margin-top:5px;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-cancelar">Cancelar</button>
+                                    </form>
+                                {% else %}
+                                    <form action="{% url 'cancelar_pt' e.id %}" method="post" style="margin-top:5px;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-cancelar">Cancelar</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="2">Ainda não tens reservas futuras.</td></tr>
+            {% endif %}
         </tbody>
     </table>
 
     <div class="text-center mt-4">
-        <a href="{% url 'aluno_dashboard' %}" class="btn-back"
-           style="background:#6c757d;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;">
+        <a href="{% url 'aluno_dashboard' %}"
+           style="background:#6c757d;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;border-radius:8px;">
            Voltar à página inicial
         </a>
     </div>
