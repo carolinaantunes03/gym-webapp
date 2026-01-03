@@ -1,116 +1,161 @@
 {% extends 'base.html' %}
-{% block content %}
-<!DOCTYPE html>
-<html lang="pt">
-<head>
-    <meta charset="UTF-8">
-    <title>Pagamentos</title>
-</head>
-<body>
-    <h2>Pagamentos</h2>
+{% load static %}
 
-    <p>
-        <strong>Tipo de subscrição:</strong>
-        {{ request.user.get_tipo_subscricao_display|default:"(sem subscrição)" }}
-        <br>
-        <strong>Mensalidade:</strong> {{ valor_mensalidade|floatformat:2 }} €
+{% block title %}Pagamentos{% endblock %}
+
+{% block content %}
+<style>
+body {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.container {
+    max-width: 900px;
+    margin: 40px auto;
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+h2, h3 {
+    color: #333;
+    text-align: center;
+    font-weight: bold;
+}
+
+.section {
+    margin-top: 30px;
+}
+
+.card {
+    background: #ff7f50;
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 15px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.card.future {
+    background: #6fa8dc;
+}
+
+.card.history {
+    background: #f7c26d;
+}
+
+button, .btn {
+    background-color: #ff7f50;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+button:hover, .btn:hover {
+    background-color: #f7c26d;
+    transform: translateY(-2px);
+}
+
+.cancel-btn {
+    background-color: #dc3545;
+}
+
+.cancel-btn:hover {
+    background-color: #c82333;
+}
+
+.btn-back {
+    display: inline-block;
+    background-color: #6c757d;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    margin-top: 30px;
+}
+
+.btn-back:hover {
+    background-color: #5a6268;
+}
+</style>
+
+<div class="container">
+    <h2>Gestão de Pagamentos</h2>
+
+    <div class="section text-center">
+        <p><strong>Tipo de Subscrição:</strong> {{ request.user.get_tipo_subscricao_display|default:"(sem subscrição)" }}</p>
+        <p><strong>Mensalidade:</strong> {{ valor_mensalidade|floatformat:2 }} €</p>
         {% if cancel_effective_from %}
-            <br>
-            <strong>Cancelamento agendado para:</strong> {{ cancel_effective_from|date:"d/m/Y" }}
+            <p><strong>Cancelamento agendado para:</strong> {{ cancel_effective_from|date:"d/m/Y" }}</p>
         {% endif %}
-    </p>
+    </div>
 
     <hr>
 
     <!-- PAGAMENTO ATUAL -->
-    <h3>Pagamento atual</h3>
+    <div class="section">
+        <h3>Pagamento Atual</h3>
+        {% if pagamento_atual %}
+            <div class="card">
+                <strong>Mês:</strong> {{ pagamento_atual.mes_referencia }}<br>
+                <strong>Data limite:</strong> {{ pagamento_atual.data_limite|date:"d/m/Y" }}<br>
+                <strong>Status:</strong> {{ pagamento_atual.get_status_display }}<br>
+                <strong>Valor:</strong> {{ pagamento_atual.valor|floatformat:2 }} €
 
-    {% if pagamento_atual %}
-        <p>
-            <strong>Mês:</strong> {{ pagamento_atual.mes_referencia }}
-            <br><strong>Data limite:</strong> {{ pagamento_atual.data_limite|date:"d/m/Y" }}
-            <br><strong>Status:</strong> {{ pagamento_atual.get_status_display }}
-            <br><strong>Valor:</strong> {{ pagamento_atual.valor|floatformat:2 }} €
-        </p>
-
-        {% if pagamento_atual.status == 'por_pagar' %}
-            <form action="{% url 'pagar' pagamento_atual.id %}" method="post" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit">Pagar {{ pagamento_atual.valor|floatformat:2 }} €</button>
-            </form>
+                {% if pagamento_atual.status == 'por_pagar' %}
+                    <form action="{% url 'pagar' pagamento_atual.id %}" method="post" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="mt-2">Pagar Agora 💰</button>
+                    </form>
+                {% else %}
+                    <div class="mt-2">✅ Pago</div>
+                {% endif %}
+            </div>
         {% else %}
-            <span>Pago ✅</span>
+            <p>Não há pagamento atual (subscrição inativa).</p>
         {% endif %}
-    {% else %}
-        <p>Não há pagamento atual (subscrição cancelada/inativa para este mês).</p>
-    {% endif %}
+    </div>
 
-    <hr>
-
-    <!-- FUTUROS (PREVIEW) -->
-    <h3>Pagamentos futuros (preview)</h3>
-
-    {% if futuros %}
-        <ul>
+    <!-- FUTUROS -->
+    <div class="section">
+        <h3>Pagamentos Futuros</h3>
+        {% if futuros %}
             {% for f in futuros %}
-                <li>
-                    <strong>Mês:</strong> {{ f.mes }}
-                    <br><strong>Data limite:</strong> {{ f.data_limite|date:"d/m/Y" }}
-                    <br><strong>Valor previsto:</strong> {{ f.valor|floatformat:2 }} €
-                    <br><em>(ainda não está registado como pagamento na base de dados)</em>
-                </li>
-                <hr>
+                <div class="card future">
+                    <strong>Mês:</strong> {{ f.mes }}<br>
+                    <strong>Data limite:</strong> {{ f.data_limite|date:"d/m/Y" }}<br>
+                    <strong>Valor previsto:</strong> {{ f.valor|floatformat:2 }} €<br>
+                    <em>(Ainda não registado)</em>
+                </div>
             {% endfor %}
-        </ul>
-    {% else %}
-        <p>Sem pagamentos futuros a mostrar.</p>
-    {% endif %}
+        {% else %}
+            <p class="text-center">Sem pagamentos futuros a mostrar.</p>
+        {% endif %}
+    </div>
 
-    <hr>
 
-    <!-- HISTÓRICO -->
-    <h3>Histórico</h3>
-
-    {% if historico %}
-        <ul>
-            {% for pagamento in historico %}
-                <li>
-                    <strong>Mês:</strong> {{ pagamento.mes_referencia }}
-                    <br><strong>Data limite:</strong> {{ pagamento.data_limite|date:"d/m/Y" }}
-                    <br><strong>Status:</strong> {{ pagamento.get_status_display }}
-                    <br><strong>Valor:</strong> {{ pagamento.valor|floatformat:2 }} €
-                    <br>
-                    {% if pagamento.status == 'pago' %}
-                        <span>Pago ✅</span>
-                    {% else %}
-                        <span>Por pagar</span>
-                    {% endif %}
-                </li>
-                <hr>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>Ainda não existem pagamentos no histórico.</p>
-    {% endif %}
-
-    <hr>
 
     <!-- CANCELAR SUBSCRIÇÃO -->
-    {% if cancel_effective_from %}
-        <p><em>A tua subscrição já tem um cancelamento agendado.</em></p>
-    {% else %}
-        <h3>Cancelar subscrição</h3>
-        <p>
-            Regra: para cancelar para um mês, tens de pedir até dia <strong>15</strong> do mês anterior.
-        </p>
-        <form action="{% url 'cancelar_subscricao' %}" method="post">
-            {% csrf_token %}
-            <button type="submit">Cancelar subscrição</button>
-        </form>
-    {% endif %}
+    <div class="section text-center">
+        {% if cancel_effective_from %}
+            <p><em>A tua subscrição já tem um cancelamento agendado.</em></p>
+        {% else %}
+            <h3>❌ Cancelar Subscrição</h3>
+            <p>Tens até ao  <strong>dia 15</strong> do mês anterior para pedir para cancelar a tua subscrição</p>
+            <form action="{% url 'cancelar_subscricao' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="cancel-btn">Cancelar Subscrição</button>
+            </form>
+        {% endif %}
+    </div>
 
-    <br>
-    <a href="{% url 'aluno_dashboard' %}">⬅ Voltar ao painel</a>
-</body>
-</html>
+    <div class="text-center">
+        <a href="{% url 'aluno_dashboard' %}" class="btn-back">Voltar à página inicial</a>
+    </div>
+</div>
 {% endblock %}
