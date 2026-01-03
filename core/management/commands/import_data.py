@@ -33,12 +33,35 @@ class Command(BaseCommand):
                             'cancel_effective_from': self.parse_date(row.get('cancel_effective_from')),
                         }
                     )
+
+                    # If user already exists, update missing fields (including foto_perfil)
+                    if not created:
+                        user.email = row['email']
+                        user.first_name = row.get('first_name', user.first_name)
+                        user.last_name = row.get('last_name', user.last_name)
+                        user.role = row.get('role', user.role)
+                        user.tipo_subscricao = row.get('tipo_subscricao') or user.tipo_subscricao
+                        user.foto_perfil = row.get('foto_perfil') or user.foto_perfil
+                        user.is_staff = row.get('is_staff', '').lower() == 'true'
+                        user.is_active = row.get('is_active', '').lower() != 'false'
+                        user.is_superuser = row.get('is_superuser', '').lower() == 'true'
+                        user.cancel_requested_at = self.parse_datetime(row.get('cancel_requested_at'))
+                        user.cancel_effective_from = self.parse_date(row.get('cancel_effective_from'))
+                        user.save(update_fields=[
+                            'email', 'first_name', 'last_name', 'role', 'tipo_subscricao',
+                            'foto_perfil', 'is_staff', 'is_active', 'is_superuser',
+                            'cancel_requested_at', 'cancel_effective_from'
+                        ])
+
+                    # Set password for newly created users
                     if created:
                         user.set_password(row.get('password', '12345'))
                         user.save()
-            self.stdout.write(self.style.SUCCESS("✅ Users imported"))
+
+            self.stdout.write(self.style.SUCCESS("✅ Users imported or updated"))
         except FileNotFoundError:
             self.stdout.write(self.style.WARNING("⚠️ No users.csv found."))
+
 
         # ---- CLASSES ----
         try:
