@@ -1,6 +1,8 @@
 import csv
+from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from datetime import datetime, date
 from core.models import User, Class, Booking, PTSession, Payment
 
 
@@ -16,13 +18,19 @@ class Command(BaseCommand):
                 reader = csv.DictReader(f)
                 for row in reader:
                     user, created = User.objects.get_or_create(
-                        email=row['email'],
+                        id=int(row['id']),
                         defaults={
+                            'email': row['email'],
                             'first_name': row.get('first_name', ''),
                             'last_name': row.get('last_name', ''),
                             'role': row.get('role', 'cliente'),
                             'tipo_subscricao': row.get('tipo_subscricao') or None,
+                            'foto_perfil': row.get('foto_perfil') or None,
                             'is_staff': row.get('is_staff', '').lower() == 'true',
+                            'is_active': row.get('is_active', '').lower() != 'false',
+                            'is_superuser': row.get('is_superuser', '').lower() == 'true',
+                            'cancel_requested_at': self.parse_datetime(row.get('cancel_requested_at')),
+                            'cancel_effective_from': self.parse_date(row.get('cancel_effective_from')),
                         }
                     )
                     if created:
@@ -37,16 +45,17 @@ class Command(BaseCommand):
             with open('core/data/classes.csv', newline='', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    instrutor = User.objects.filter(email=row['instrutor_email']).first()
+                    instrutor = User.objects.filter(id=row['instrutor_id']).first()
                     if instrutor:
                         Class.objects.get_or_create(
-                            nome=row['nome'],
-                            instrutor=instrutor,
-                            horario_inicio=timezone.make_aware(
-                                timezone.datetime.fromisoformat(row['horario_inicio'])
-                            ),
-                            duracao_min=int(row.get('duracao_min', 60)),
-                            capacidade_max=int(row.get('capacidade_max', 20))
+                            id=int(row['id']),
+                            defaults={
+                                'nome': row['nome'],
+                                'instrutor': instrutor,
+                                'horario_inicio': self.parse_datetime(row['horario_inicio']),
+                                'duracao_min': int(row.get('duracao_min', 60)),
+                                'capacidade_max': int(row.get('capacidade_max', 20)),
+                            }
                         )
             self.stdout.write(self.style.SUCCESS("✅ Classes imported"))
         except FileNotFoundError:
@@ -57,13 +66,17 @@ class Command(BaseCommand):
             with open('core/data/bookings.csv', newline='', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    user = User.objects.filter(email=row['usuario_email']).first()
-                    aula = Class.objects.filter(nome=row['aula_nome']).first()
-                    if user and aula:
+                    usuario = User.objects.filter(id=row['usuario_id']).first()
+                    aula = Class.objects.filter(id=row['aula_id']).first()
+                    if usuario and aula:
                         Booking.objects.get_or_create(
-                            usuario=user,
-                            aula=aula,
-                            defaults={'status': row.get('status', 'True') == 'True'}
+                            id=int(row['id']),
+                            defaults={
+                                'usuario': usuario,
+                                'aula': aula,
+                                'data_reserva': self.parse_datetime(row.get('data_reserva')),
+                                'status': row.get('status', '').lower() in ['true', '1', 'yes'],
+                            }
                         )
             self.stdout.write(self.style.SUCCESS("✅ Bookings imported"))
         except FileNotFoundError:
@@ -74,16 +87,18 @@ class Command(BaseCommand):
             with open('core/data/pt_sessions.csv', newline='', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    aluno = User.objects.filter(email=row['aluno_email']).first()
-                    instrutor = User.objects.filter(email=row['instrutor_email']).first()
+                    aluno = User.objects.filter(id=row['aluno_id']).first()
+                    instrutor = User.objects.filter(id=row['instrutor_id']).first()
                     if aluno and instrutor:
                         PTSession.objects.get_or_create(
-                            aluno=aluno,
-                            instrutor=instrutor,
-                            horario=timezone.make_aware(
-                                timezone.datetime.fromisoformat(row['horario'])
-                            ),
-                            duracao_min=int(row.get('duracao_min', 60))
+                            id=int(row['id']),
+                            defaults={
+                                'aluno': aluno,
+                                'instrutor': instrutor,
+                                'horario': self.parse_datetime(row['horario']),
+                                'duracao_min': int(row.get('duracao_min', 60)),
+                                'criada_em': self.parse_datetime(row.get('criada_em')),
+                            }
                         )
             self.stdout.write(self.style.SUCCESS("✅ PT Sessions imported"))
         except FileNotFoundError:
@@ -94,19 +109,45 @@ class Command(BaseCommand):
             with open('core/data/payments.csv', newline='', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    user = User.objects.filter(email=row['usuario_email']).first()
-                    if user:
+                    usuario = User.objects.filter(id=row['usuario_id']).first()
+                    if usuario:
                         Payment.objects.get_or_create(
-                            usuario=user,
-                            mes_referencia=row['mes_referencia'],
+                            id=int(row['id']),
                             defaults={
-                                'valor': row.get('valor', 0),
-                                'data_limite': row.get('data_limite'),
-                                'status': row.get('status', 'por_pagar')
+                                'usuario': usuario,
+                                'mes_referencia': row['mes_referencia'],
+                                'valor': Decimal(row.get('valor', '0')),
+                                'data_limite': self.parse_date(row.get('data_limite')),
+                                'status': row.get('status', 'por_pagar'),
                             }
                         )
-            self.stdout.write(self.style.SUCCESS("Payments imported"))
+            self.stdout.write(self.style.SUCCESS("✅ Payments imported"))
         except FileNotFoundError:
-            self.stdout.write(self.style.WARNING("No payments.csv found."))
+            self.stdout.write(self.style.WARNING("⚠️ No payments.csv found."))
 
-        self.stdout.write(self.style.SUCCESS("All imports completed successfully!"))
+        self.stdout.write(self.style.SUCCESS("🎉 All imports completed successfully!"))
+
+    # --- Utility Functions ---
+    def parse_datetime(self, value):
+        """Safely parse timestamps"""
+        if not value:
+            return None
+        try:
+            dt = datetime.fromisoformat(value)
+            if timezone.is_naive(dt):
+                return timezone.make_aware(dt)
+            return dt
+        except Exception:
+            return None
+
+    def parse_date(self, value):
+        """Safely parse date fields"""
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(value).date()
+        except Exception:
+            try:
+                return date.fromisoformat(value)
+            except Exception:
+                return None
