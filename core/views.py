@@ -825,7 +825,7 @@ def listar_instrutores(request):
 
 
 
-@login_required
+
 def index(request):
     """
     Página index pedida no enunciado:
@@ -833,11 +833,6 @@ def index(request):
     - número de elementos em cada tabela
     Nota: para evitar “leaks”, deixamos só para staff/instrutor/admin.
     """
-    if not request.user.is_staff:
-        # manda para o dashboard normal de cada role
-        if getattr(request.user, "role", None) == "instrutor":
-            return redirect("instrutor_dashboard")
-        return redirect("aluno_dashboard")
 
     # Contagens principais
     total_users = User.objects.count()

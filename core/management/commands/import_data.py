@@ -1,5 +1,6 @@
 import csv
 from decimal import Decimal
+import os
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import datetime, date
@@ -25,7 +26,7 @@ class Command(BaseCommand):
                             'last_name': row.get('last_name', ''),
                             'role': row.get('role', 'cliente'),
                             'tipo_subscricao': row.get('tipo_subscricao') or None,
-                            'foto_perfil': row.get('foto_perfil') or None,
+                            
                             'is_staff': row.get('is_staff', '').lower() == 'true',
                             'is_active': row.get('is_active', '').lower() != 'false',
                             'is_superuser': row.get('is_superuser', '').lower() == 'true',
@@ -35,7 +36,15 @@ class Command(BaseCommand):
                     )
                     if created:
                         user.set_password(row.get('password', '12345'))
-                        user.save()
+                    
+                    # --- Foto de perfil ---
+                    foto_path = row.get('foto_perfil')
+                    if foto_path and os.path.exists(foto_path):
+                        from django.core.files import File
+                        with open(foto_path, 'rb') as f:
+                            user.foto_perfil.save(os.path.basename(foto_path), File(f), save=False)
+
+                    user.save()
             self.stdout.write(self.style.SUCCESS("✅ Users imported"))
         except FileNotFoundError:
             self.stdout.write(self.style.WARNING("⚠️ No users.csv found."))
