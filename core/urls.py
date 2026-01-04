@@ -27,6 +27,8 @@ urlpatterns = [
     path('aluno/marcar/<int:instrutor_id>/', views.marcar_consulta, name='marcar_consulta'),
     path('minhas-reservas/cancelar-pt/<int:pt_id>/', views.cancelar_pt, name='cancelar_pt'),
     path('instrutor/horario/gerir/', views.instrutor_horario, name='instrutor_horario'),
+    path('index/', views.index, name='index'),
+
 
 ]
 

@@ -23,6 +23,7 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import PTSession, User, Class
 
+from django.urls import reverse
 
 def first_day_of_month(d: date) -> date:
     return d.replace(day=1)
@@ -822,3 +823,74 @@ def listar_instrutores(request):
     instrutores = User.objects.filter(role='instrutor')
     return render(request, 'aluno/lista_instrutores.html', {'instrutores': instrutores})
 
+
+
+@login_required
+def index(request):
+    """
+    Página index pedida no enunciado:
+    - links para cada entidade
+    - número de elementos em cada tabela
+    Nota: para evitar “leaks”, deixamos só para staff/instrutor/admin.
+    """
+    if not request.user.is_staff:
+        # manda para o dashboard normal de cada role
+        if getattr(request.user, "role", None) == "instrutor":
+            return redirect("instrutor_dashboard")
+        return redirect("aluno_dashboard")
+
+    # Contagens principais
+    total_users = User.objects.count()
+    total_clientes = User.objects.filter(role="cliente").count()
+    total_instrutores = User.objects.filter(role="instrutor").count()
+
+    total_classes = Class.objects.count()
+    total_bookings = Booking.objects.count()
+    total_bookings_ativas = Booking.objects.filter(status=True).count()
+
+    total_payments = Payment.objects.count()
+    total_payments_pagos = Payment.objects.filter(status="pago").count()
+    total_payments_pendentes = Payment.objects.filter(status="por_pagar").count()
+
+    total_ptsessions = PTSession.objects.count()
+
+    # Links diretos para o Django Admin (changelists)
+    # admin:<app_label>_<modelname>_changelist
+    cards = [
+        {
+            "label": "Utilizadores (total)",
+            "count": total_users,
+            "meta": f"Clientes: {total_clientes} | Instrutores: {total_instrutores}",
+            "url": reverse("admin:core_user_changelist"),
+        },
+        {
+            "label": "Aulas (Classes)",
+            "count": total_classes,
+            "meta": "Gerir aulas no admin",
+            "url": reverse("admin:core_class_changelist"),
+        },
+        {
+            "label": "Reservas (Bookings)",
+            "count": total_bookings,
+            "meta": f"Ativas: {total_bookings_ativas}",
+            "url": reverse("admin:core_booking_changelist"),
+        },
+        {
+            "label": "Pagamentos (Payments)",
+            "count": total_payments,
+            "meta": f"Pagos: {total_payments_pagos} | Pendentes: {total_payments_pendentes}",
+            "url": reverse("admin:core_payment_changelist"),
+        },
+        {
+            "label": "Sessões PT (PTSession)",
+            "count": total_ptsessions,
+            "meta": "Sessões de Personal Training",
+            "url": reverse("admin:core_ptsession_changelist"),
+        },
+    ]
+
+    context = {
+        "cards": cards,
+        "admin_index_url": reverse("admin:index"),
+    }
+    return render(request, "index.html", context)

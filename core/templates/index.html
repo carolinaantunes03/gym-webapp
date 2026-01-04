@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Index{% endblock %}
+
+{% block content %}
+<style>
+body { background-color:#f5f5f5; color:#333; }
+
+.container{
+    max-width: 1000px;
+    margin: 40px auto;
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+h2{
+    text-align:center;
+    font-weight:800;
+    margin-bottom:10px;
+}
+
+.subtitle{
+    text-align:center;
+    margin-bottom:30px;
+    color:#666;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap:18px;
+}
+
+.card{
+    display:block;
+    text-decoration:none;
+    background:#ffffff;
+    border:1px solid #eee;
+    border-radius:14px;
+    padding:18px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    transition: transform .15s, box-shadow .15s;
+    color:#333;
+}
+
+.card:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.10);
+}
+
+.card .label{
+    font-weight:800;
+    margin-bottom:8px;
+}
+
+.card .count{
+    font-size:2rem;
+    font-weight:900;
+    margin-bottom:8px;
+}
+
+.card .meta{
+    color:#666;
+    font-size:0.95rem;
+}
+
+.actions{
+    text-align:center;
+    margin-top:28px;
+}
+
+.btn{
+    display:inline-block;
+    background-color:#ff7f50;
+    color:white;
+    padding:10px 18px;
+    border-radius:10px;
+    text-decoration:none;
+    font-weight:800;
+    margin: 0 8px;
+}
+
+.btn:hover{ background-color:#f7c26d; }
+
+.btn-secondary{
+    background-color:#6c757d;
+}
+
+.btn-secondary:hover{
+    background-color:#5a6268;
+}
+</style>
+
+<div class="container">
+    <h2>Index (Resumo da Base de Dados)</h2>
+
+    <div class="grid">
+        {% for c in cards %}
+            <a class="card" href="{{ c.url }}">
+                <div class="label">{{ c.label }}</div>
+                <div class="count">{{ c.count }}</div>
+                <div class="meta">{{ c.meta }}</div>
+            </a>
+        {% endfor %}
+    </div>
+
+    <div class="actions">
+        <a class="btn" href="{{ admin_index_url }}">Abrir Django Admin</a>
+        <a class="btn btn-secondary" href="{% url 'home' %}">Voltar ao início</a>
+    </div>
+</div>
+{% endblock %}
