@@ -17,6 +17,7 @@ urlpatterns = [
     path('pagamentos/', views.pagamentos, name='pagamentos'),
     path('pagamentos/pagar/<int:pagamento_id>/', views.pagar_pagamento, name='pagar'),
     path('pagamentos/cancelar/', views.cancelar_subscricao, name='cancelar_subscricao'),
+    path('pagamentos/reativar/', views.reativar_subscricao, name='reativar_subscricao'),
     path('perfil/', views.perfil_redirect, name='perfil_redirect'),
     path('perfil/aluno/', views.perfil_aluno, name='perfil_aluno'),
     path('perfil/instrutor/', views.perfil_instrutor, name='perfil_instrutor'),

@@ -31,7 +31,7 @@ def create_user(email, first_name, last_name, role, tipo_subscricao=None, senha=
 print("Criando/atualizando utilizadores fictícios...")
 
 aluno1 = create_user("aluno1@teste.com", "Ana", "Silva", role="cliente", tipo_subscricao="estudante")
-aluno2 = create_user("aluno2@teste.com", "João", "Costa", role="cliente", tipo_subscricao="adulto")
+aluno2 = create_user("aluno2@teste.com", "Joao", "Costa", role="cliente", tipo_subscricao="adulto")
 
 instrutor1 = create_user("instrutor1@teste.com", "Mike", "Johnson", role="instrutor")
 instrutor2 = create_user("instrutor2@teste.com", "Jessica", "Antunes", role="instrutor")

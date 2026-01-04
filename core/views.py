@@ -15,13 +15,14 @@ from decimal import Decimal
 
 from .forms import LoginForm
 from collections import Counter
-from django.db.models import Count
+from django.db.models import Count, Sum  # <-- acrescentei Sum
 
 from .forms import ClienteSignupForm, InstrutorSignupForm
 from django.contrib.auth import login
 from django.utils import timezone
 from datetime import timedelta
 from .models import PTSession, User, Class
+
 
 def first_day_of_month(d: date) -> date:
     return d.replace(day=1)
@@ -37,6 +38,13 @@ def month_key(d: date) -> str:
 def due_date_for_month(month_start: date) -> date:
     # tens usado dia 10 como data limite
     return month_start.replace(day=10)
+
+def prev_month_start(d: date) -> date:
+    d = d.replace(day=1)
+    if d.month == 1:
+        return date(d.year - 1, 12, 1)
+    return date(d.year, d.month - 1, 1)
+
 
 # ---------------------------
 # Login
@@ -92,6 +100,7 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from core.models import Class
+
 @login_required
 def horario_aulas(request):
     # Segunda-feira da semana atual
@@ -282,12 +291,11 @@ def minhas_aulas(request):
     }
     return render(request, 'instrutor/minhas_aulas.html', context)
 
-
-
-
 # ----------------------------
 # Pagamentos (aluno)
 # ----------------------------
+from django.db.models import Sum
+
 VALORES_SUBSCRICAO = {
     'estudante': Decimal('30.00'),
     'adulto': Decimal('45.00'),
@@ -295,9 +303,62 @@ VALORES_SUBSCRICAO = {
     'senior': Decimal('30.00'),
 }
 
+LATE_FEE = Decimal('5.00')  # multa
+DUE_DAY = 10  # dia limite
+
+MESES_PT = {
+    1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+    5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+    9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+}
+
 def _mes_ref(dt: date) -> str:
-    # Ordena bem (YYYY-MM)
     return f"{dt.year:04d}-{dt.month:02d}"
+
+def _parse_mes_ref(mes_ref: str):
+    """
+    Aceita:
+      - 'YYYY-MM'
+      - 'Janeiro 2026' (para não crashar caso existam valores antigos errados)
+    """
+    if not mes_ref:
+        return None
+
+    s = str(mes_ref).strip()
+
+    # Caso normal: YYYY-MM
+    if "-" in s:
+        parts = s.split("-")
+        if len(parts) == 2:
+            try:
+                y = int(parts[0])
+                m = int(parts[1])
+                return date(y, m, 1)
+            except ValueError:
+                return None
+
+    # Caso legacy: "Janeiro 2026"
+    tokens = s.split()
+    if len(tokens) >= 2:
+        try:
+            ano = int(tokens[-1])
+            nome_mes = " ".join(tokens[:-1]).strip().lower()
+            mapa = {v.lower(): k for k, v in MESES_PT.items()}
+            if nome_mes in mapa:
+                return date(ano, mapa[nome_mes], 1)
+        except ValueError:
+            return None
+
+    return None
+
+def _mes_label(mes_ref: str) -> str:
+    dt = _parse_mes_ref(mes_ref)
+    if not dt:
+        return mes_ref
+    return f"{MESES_PT[dt.month]} {dt.year}"
+
+def due_date_for_month(month_start: date) -> date:
+    return month_start.replace(day=DUE_DAY)
 
 def _valor_mensalidade(user: User) -> Decimal:
     return VALORES_SUBSCRICAO.get(user.tipo_subscricao, Decimal('45.00'))
@@ -306,68 +367,172 @@ def _user_tem_subscricao_ativa_no_mes(user: User, mes_inicio: date) -> bool:
     """
     True se o user ainda tem subscrição ativa para esse mês.
     - Se não existir cancel_effective_from -> ativo
-    - Se existir, só é ativo antes dessa data (1º dia do mês efetivo do cancelamento)
+    - Se existir -> ativo apenas para meses ANTES do effective_from
     """
-    if hasattr(user, "cancel_effective_from") and user.cancel_effective_from:
-        return mes_inicio < user.cancel_effective_from
+    efetivo = getattr(user, "cancel_effective_from", None)
+    if efetivo:
+        return mes_inicio < efetivo
     return True
+
+def _first_day_of_month(d: date) -> date:
+    return d.replace(day=1)
+
+def _first_day_next_month(d: date) -> date:
+    if d.month == 12:
+        return date(d.year + 1, 1, 1)
+    return date(d.year, d.month + 1, 1)
+
+def _iter_months(start_month: date, end_month: date):
+    m = _first_day_of_month(start_month)
+    end_m = _first_day_of_month(end_month)
+    while m <= end_m:
+        yield m
+        m = _first_day_next_month(m)
+
+def _user_data_entrada(user: User) -> date:
+    # usa date_joined como "data de entrada" (como tens no perfil)
+    dj = user.date_joined
+    if isinstance(dj, datetime):
+        return timezone.localtime(dj).date()
+    return dj if isinstance(dj, date) else timezone.localdate()
 
 
 @login_required
 def pagamentos(request):
-    # Apenas alunos podem ver
     if request.user.role != 'cliente':
         return redirect('horario_aulas')
 
+    user = request.user
     hoje = timezone.localdate()
-    mes_atual = first_day_of_month(hoje)
 
-    valor_mensalidade = _valor_mensalidade(request.user)
-    tipo_sub = request.user.tipo_subscricao or 'sem subscrição'
+    data_entrada = _user_data_entrada(user)
+    mes_inicio = _first_day_of_month(data_entrada)
+    mes_atual = _first_day_of_month(hoje)
 
-    pagamento_atual = None
+    valor_mensalidade = _valor_mensalidade(user)
+    cancel_effective_from = getattr(user, "cancel_effective_from", None)
 
-    # Só cria "pagamento atual" se o utilizador ainda tiver subscrição ativa nesse mês
-    if _user_tem_subscricao_ativa_no_mes(request.user, mes_atual):
-        pagamento_atual, _ = Payment.objects.get_or_create(
-            usuario=request.user,
-            mes_referencia=_mes_ref(mes_atual),
-            defaults={
-                'valor': valor_mensalidade,
-                'data_limite': due_date_for_month(mes_atual),  # dia 10
-                'status': 'por_pagar',
-            }
-        )
+    # 1) Mapear pagamentos já existentes (só os que conseguimos interpretar como mês)
+    payments_by_key = {}
+    for p in Payment.objects.filter(usuario=user):
+        dt = _parse_mes_ref(p.mes_referencia)
+        if not dt:
+            continue
+        key = _mes_ref(dt)
+        # só consideramos a partir do mês de entrada
+        if dt < mes_inicio:
+            continue
+        payments_by_key[key] = p
 
-    historico = Payment.objects.filter(usuario=request.user).exclude(
-        mes_referencia=_mes_ref(mes_atual)
+    # 2) Garantir pagamentos desde o mês de entrada até ao mês atual (inclusive)
+    for m in _iter_months(mes_inicio, mes_atual):
+        if not _user_tem_subscricao_ativa_no_mes(user, m):
+            # se a subscrição ficou inativa a partir daqui, os meses seguintes também não contam
+            break
+
+        key = _mes_ref(m)
+        if key not in payments_by_key:
+            p = Payment.objects.create(
+                usuario=user,
+                mes_referencia=key,
+                valor=valor_mensalidade,
+                data_limite=due_date_for_month(m),
+                status='por_pagar',
+            )
+            payments_by_key[key] = p
+
+    # 3) Construir lista ordenada (mes_inicio -> mes_atual)
+    pagamentos_periodo = []
+    for m in _iter_months(mes_inicio, mes_atual):
+        key = _mes_ref(m)
+        if key in payments_by_key:
+            pagamentos_periodo.append(payments_by_key[key])
+
+    # 4) Aplicar multa (uma vez) aos pagamentos em atraso ainda por pagar
+    # regra: se hoje > data_limite, e valor ainda == mensalidade base, então soma 5€
+    for p in pagamentos_periodo:
+        if p.status == 'por_pagar' and hoje > p.data_limite:
+            if p.valor == valor_mensalidade:
+                p.valor = p.valor + LATE_FEE
+                p.save(update_fields=['valor'])
+
+        # atributos extra para o template (não vão para BD)
+        p.mes_label = _mes_label(p.mes_referencia)
+        p.em_atraso = (p.status == 'por_pagar' and hoje > p.data_limite)
+
+    mes_atual_key = _mes_ref(mes_atual)
+
+    pagamento_atual = payments_by_key.get(mes_atual_key, None)
+    if pagamento_atual:
+        pagamento_atual.mes_label = _mes_label(pagamento_atual.mes_referencia)
+        pagamento_atual.em_atraso = (pagamento_atual.status == 'por_pagar' and hoje > pagamento_atual.data_limite)
+
+    # Pagamentos em atraso: meses < mes_atual e por pagar
+    pagamentos_em_atraso = []
+    for p in pagamentos_periodo:
+        dt = _parse_mes_ref(p.mes_referencia)
+        if dt and dt < mes_atual and p.status == 'por_pagar':
+            pagamentos_em_atraso.append(p)
+
+    # Histórico: pagos (desde a entrada)
+    historico = Payment.objects.filter(
+        usuario=user,
+        status='pago',
+        mes_referencia__gte=_mes_ref(mes_inicio),
     ).order_by('-mes_referencia')
 
-    # Futuros = preview dos próximos 2 meses (não cria na base de dados - meramente visual)
+    total_pago = historico.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+
+    # 5) Futuros (preview): próximos 2 meses (não cria na BD)
     futuros = []
-    m = first_day_next_month(mes_atual)
+    m = _first_day_next_month(mes_atual)
     for _ in range(2):
-        if not _user_tem_subscricao_ativa_no_mes(request.user, m):
+        if not _user_tem_subscricao_ativa_no_mes(user, m):
             break
         futuros.append({
-            'mes': _mes_ref(m),
+            'mes_key': _mes_ref(m),
+            'mes_label': _mes_label(_mes_ref(m)),
             'data_limite': due_date_for_month(m),
             'valor': valor_mensalidade,
         })
-        m = first_day_next_month(m)
-
-    cancel_effective_from = getattr(request.user, "cancel_effective_from", None)
+        m = _first_day_next_month(m)
 
     context = {
-        'pagamento_atual': pagamento_atual,
-        'historico': historico,
-        'futuros': futuros,
         'valor_mensalidade': valor_mensalidade,
-        'tipo_subscricao': tipo_sub,
         'cancel_effective_from': cancel_effective_from,
+
+        'pagamentos_em_atraso': pagamentos_em_atraso,
+        'pagamento_atual': pagamento_atual,
+        'futuros': futuros,
+
+        'historico': historico,
+        'total_pago': total_pago,
     }
 
     return render(request, 'aluno/pagamentos.html', context)
+
+
+@require_POST
+@login_required
+def pagar_pagamento(request, pagamento_id):
+    if request.user.role != 'cliente':
+        return redirect('horario_aulas')
+
+    pagamento = get_object_or_404(Payment, id=pagamento_id, usuario=request.user)
+
+    if pagamento.status != 'pago':
+        hoje = timezone.localdate()
+        valor_mensalidade = _valor_mensalidade(request.user)
+
+        # se estiver em atraso e ainda não tiver multa aplicada (heurística simples)
+        if hoje > pagamento.data_limite and pagamento.valor == valor_mensalidade:
+            pagamento.valor = pagamento.valor + LATE_FEE
+
+        pagamento.status = 'pago'
+        pagamento.save(update_fields=['status', 'valor'])
+        messages.success(request, "Pagamento marcado como pago ✅")
+
+    return redirect('pagamentos')
 
 
 @require_POST
@@ -384,16 +549,17 @@ def cancelar_subscricao(request):
 
     # regra do dia 15:
     # - até 15 -> efetivo no 1º dia do próximo mês
-    # - depois do 15 -> efetivo no 1º dia do mês seguinte ao próximo
+    # - depois do 15 -> show cancela no 1º dia do mês seguinte ao próximo
     if hoje.day <= 15:
-        efetivo = first_day_next_month(hoje)
+        efetivo = _first_day_next_month(hoje)
     else:
-        efetivo = first_day_next_month(first_day_next_month(hoje))
+        efetivo = _first_day_next_month(_first_day_next_month(hoje))
 
     request.user.cancel_requested_at = timezone.now()
     request.user.cancel_effective_from = efetivo
     request.user.save(update_fields=['cancel_requested_at', 'cancel_effective_from'])
 
+    # apaga pagamentos futuros guardados na BD (se existirem)
     Payment.objects.filter(
         usuario=request.user,
         mes_referencia__gte=_mes_ref(efetivo)
@@ -403,21 +569,25 @@ def cancelar_subscricao(request):
     return redirect('pagamentos')
 
 
+@require_POST
 @login_required
-def pagar_pagamento(request, pagamento_id):
-    if request.method != 'POST':
-        return redirect('pagamentos')
-
+def reativar_subscricao(request):
     if request.user.role != 'cliente':
         return redirect('horario_aulas')
 
-    pagamento = get_object_or_404(Payment, id=pagamento_id, usuario=request.user)
+    if not hasattr(request.user, "cancel_effective_from"):
+        messages.error(request, "O modelo User ainda não tem os campos de cancelamento (faz a migration primeiro).")
+        return redirect('pagamentos')
 
-    if pagamento.status != 'pago':
-        pagamento.status = 'pago'
-        pagamento.save(update_fields=['status'])
-        messages.success(request, "Pagamento marcado como pago ✅")
+    if not request.user.cancel_effective_from:
+        messages.info(request, "Não existe nenhum cancelamento agendado.")
+        return redirect('pagamentos')
 
+    request.user.cancel_requested_at = None
+    request.user.cancel_effective_from = None
+    request.user.save(update_fields=['cancel_requested_at', 'cancel_effective_from'])
+
+    messages.success(request, "Subscrição reativada com sucesso ✅")
     return redirect('pagamentos')
 
 @login_required
@@ -537,10 +707,10 @@ def signup_cliente(request):
             user = form.save(commit=False)
             user.role = 'cliente'
             user.save()
-            
+
             # Fazer login automático após o registo
             login(request, user)
-            
+
             # Redirecionar para o dashboard do aluno
             return redirect('aluno_dashboard')
     else:
@@ -550,16 +720,16 @@ def signup_cliente(request):
 
 def signup_instrutor(request):
     if request.method == 'POST':
-        form = InstrutorSignupForm(request.POST, request.FILES)  
+        form = InstrutorSignupForm(request.POST, request.FILES)
         if form.is_valid():
             user = form.save(commit=False)
             user.role = 'instrutor'
             user.is_staff = True  # opcional para aceder ao admin
             user.save()
-            
+
             # Fazer login automático após o registo
             login(request, user)
-            
+
             # Redirecionar para o dashboard do instrutor
             return redirect('instrutor_dashboard')
     else:
@@ -614,11 +784,12 @@ def marcar_consulta(request, instrutor_id):
         'disponiveis': disponiveis
     })
 
+
 @login_required
 def instrutor_horario(request):
     if request.user.role != 'instrutor':
         return redirect('horario_aulas')
-    
+
     agora = timezone.now()
 
     # Apenas aulas futuras
@@ -650,5 +821,4 @@ def instrutor_horario(request):
 def listar_instrutores(request):
     instrutores = User.objects.filter(role='instrutor')
     return render(request, 'aluno/lista_instrutores.html', {'instrutores': instrutores})
-
 

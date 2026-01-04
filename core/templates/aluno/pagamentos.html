@@ -44,6 +44,12 @@ h2, h3 {
 
 .card.history {
     background: #f7c26d;
+    color: #fff;
+}
+
+.card.late {
+    background: #dc3545;
+    color: #fff;
 }
 
 button, .btn {
@@ -69,6 +75,14 @@ button:hover, .btn:hover {
     background-color: #c82333;
 }
 
+.reactivate-btn {
+    background-color: #28a745;
+}
+
+.reactivate-btn:hover {
+    background-color: #218838;
+}
+
 .btn-back {
     display: inline-block;
     background-color: #6c757d;
@@ -90,8 +104,36 @@ button:hover, .btn:hover {
     <div class="section text-center">
         <p><strong>Tipo de Subscrição:</strong> {{ request.user.get_tipo_subscricao_display|default:"(sem subscrição)" }}</p>
         <p><strong>Mensalidade:</strong> {{ valor_mensalidade|floatformat:2 }} €</p>
+
         {% if cancel_effective_from %}
             <p><strong>Cancelamento agendado para:</strong> {{ cancel_effective_from|date:"d/m/Y" }}</p>
+        {% endif %}
+    </div>
+
+    <hr>
+
+    <!-- ATRASOS -->
+    <div class="section">
+        <h3>Pagamentos em atraso</h3>
+
+        {% if pagamentos_em_atraso %}
+            <p class="text-center"><em>⚠ Pagamentos por pagar de meses anteriores (inclui multa de 5€).</em></p>
+
+            {% for p in pagamentos_em_atraso %}
+                <div class="card late">
+                    <strong>Mês:</strong> {{ p.mes_label|default:p.mes_referencia }}<br>
+                    <strong>Data limite:</strong> {{ p.data_limite|date:"d/m/Y" }}<br>
+                    <strong>Status:</strong> {{ p.get_status_display }}<br>
+                    <strong>Valor a pagar:</strong> {{ p.valor|floatformat:2 }} €<br>
+
+                    <form action="{% url 'pagar' p.id %}" method="post" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="mt-2">Pagar agora 💰</button>
+                    </form>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-center">Sem pagamentos em atraso.</p>
         {% endif %}
     </div>
 
@@ -100,12 +142,17 @@ button:hover, .btn:hover {
     <!-- PAGAMENTO ATUAL -->
     <div class="section">
         <h3>Pagamento Atual</h3>
+
         {% if pagamento_atual %}
             <div class="card">
-                <strong>Mês:</strong> {{ pagamento_atual.mes_referencia }}<br>
+                <strong>Mês:</strong> {{ pagamento_atual.mes_label|default:pagamento_atual.mes_referencia }}<br>
                 <strong>Data limite:</strong> {{ pagamento_atual.data_limite|date:"d/m/Y" }}<br>
                 <strong>Status:</strong> {{ pagamento_atual.get_status_display }}<br>
-                <strong>Valor:</strong> {{ pagamento_atual.valor|floatformat:2 }} €
+                <strong>Valor:</strong> {{ pagamento_atual.valor|floatformat:2 }} €<br>
+
+                {% if pagamento_atual.em_atraso %}
+                    <div class="mt-2"><em>⚠ Em atraso (multa aplicada se aplicável).</em></div>
+                {% endif %}
 
                 {% if pagamento_atual.status == 'por_pagar' %}
                     <form action="{% url 'pagar' pagamento_atual.id %}" method="post" style="display:inline;">
@@ -117,17 +164,18 @@ button:hover, .btn:hover {
                 {% endif %}
             </div>
         {% else %}
-            <p>Não há pagamento atual (subscrição inativa).</p>
+            <p class="text-center">Não há pagamento atual (subscrição inativa).</p>
         {% endif %}
     </div>
 
     <!-- FUTUROS -->
     <div class="section">
         <h3>Pagamentos Futuros</h3>
+
         {% if futuros %}
             {% for f in futuros %}
                 <div class="card future">
-                    <strong>Mês:</strong> {{ f.mes }}<br>
+                    <strong>Mês:</strong> {{ f.mes_label }}<br>
                     <strong>Data limite:</strong> {{ f.data_limite|date:"d/m/Y" }}<br>
                     <strong>Valor previsto:</strong> {{ f.valor|floatformat:2 }} €<br>
                     <em>(Ainda não registado)</em>
@@ -138,15 +186,36 @@ button:hover, .btn:hover {
         {% endif %}
     </div>
 
+    <!-- HISTÓRICO -->
+    <div class="section">
+        <h3>Histórico</h3>
+        <p class="text-center"><strong>Total pago até ao momento:</strong> {{ total_pago|floatformat:2 }} €</p>
 
+        {% if historico %}
+            {% for p in historico %}
+                <div class="card history">
+                    <strong>Mês:</strong> {{ p.mes_referencia }}<br>
+                    <strong>Data limite:</strong> {{ p.data_limite|date:"d/m/Y" }}<br>
+                    <strong>Status:</strong> {{ p.get_status_display }} ✅<br>
+                    <strong>Valor:</strong> {{ p.valor|floatformat:2 }} €
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-center">Ainda não existem pagamentos no histórico.</p>
+        {% endif %}
+    </div>
 
-    <!-- CANCELAR SUBSCRIÇÃO -->
+    <!-- CANCELAR / REATIVAR -->
     <div class="section text-center">
         {% if cancel_effective_from %}
             <p><em>A tua subscrição já tem um cancelamento agendado.</em></p>
+            <form action="{% url 'reativar_subscricao' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="reactivate-btn">Reativar Subscrição</button>
+            </form>
         {% else %}
             <h3>❌ Cancelar Subscrição</h3>
-            <p>Tens até ao  <strong>dia 15</strong> do mês anterior para pedir para cancelar a tua subscrição</p>
+            <p>Tens até ao <strong>dia 15</strong> do mês anterior para pedir para cancelar a tua subscrição</p>
             <form action="{% url 'cancelar_subscricao' %}" method="post">
                 {% csrf_token %}
                 <button type="submit" class="cancel-btn">Cancelar Subscrição</button>

@@ -46,6 +46,21 @@ h2 {
 canvas {
     margin-top: 20px;
 }
+
+/* --- BOTÃO "Voltar à página inicial" (igual ao Pagamentos) --- */
+.btn-back {
+    display: inline-block;
+    background-color: #6c757d;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    margin-top: 30px;
+}
+
+.btn-back:hover {
+    background-color: #5a6268;
+}
 </style>
 
 <div class="profile-container">
@@ -104,5 +119,10 @@ canvas {
       }
     });
     </script>
+
+    <!-- BOTÃO NO FINAL (igual ao dos pagamentos) -->
+    <div class="text-center">
+        <a href="{% url 'aluno_dashboard' %}" class="btn-back">Voltar à página inicial</a>
+    </div>
 </div>
 {% endblock %}
